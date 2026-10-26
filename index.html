@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#163f35">
+  <meta name="description" content="A focused 52-week strength and muscular definition tracker. Train with intention, track your progress and personalize your nutrition.">
+  <title>Ironpath — Your training, with intention.</title>
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<aside class="sidebar">
+  <a class="brand" href="#overview" aria-label="Ironpath home"><span class="brand-mark">i.</span><span>IRONPATH<span class="brand-sub">BUILT OVER TIME</span></span></a>
+  <div class="nav-label">YOUR WORKSPACE</div>
+  <nav aria-label="Main navigation">
+    <a href="#overview" data-nav="overview"><span class="nav-icon">◫</span> Overview</a>
+    <a href="#workouts" data-nav="workouts"><span class="nav-icon">↗</span> Workouts</a>
+    <a href="#nutrition" data-nav="nutrition"><span class="nav-icon">◉</span> Nutrition</a>
+    <a href="#progress" data-nav="progress"><span class="nav-icon">▥</span> Progress</a>
+    <a href="#roadmap" data-nav="roadmap"><span class="nav-icon">⌁</span> The 52-week plan</a>
+  </nav>
+  <div class="sidebar-bottom"><div class="sidebar-note"><span class="tiny-label">THE LONG GAME</span><p>Small steps.<br>Stronger every week.</p><div class="mini-track"><span id="side-progress"></span></div><span id="side-week" class="muted-light">Week 1 of 52</span></div><a href="#profile" data-nav="profile" class="profile-link"><span class="avatar">YOU</span><span>Your profile<small>Details & backups</small></span><span>↗</span></a></div>
+</aside>
+<div class="workspace"><header class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Overview</span><div class="top-actions"><span class="local-badge"><i></i> Saved on this device</span><a href="#profile" class="top-avatar" aria-label="Edit your profile">Y</a></div></header>
+<main id="main" tabindex="-1"></main>
+<footer>Made for the long game. <span>Four focused days. One stronger you.</span></footer></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">RESTORE YOUR BACKUP</span><h2>Replace this device’s data?</h2><p>Your current profile, workout logs and check-ins will be replaced by the selected backup. Export your current data first if you want to keep it.</p><div class="actions"><button value="cancel" class="button secondary">Cancel</button><button value="restore" class="button">Restore backup</button></div></form></dialog>
+<noscript>This tracker needs JavaScript enabled to calculate nutrition and save your workouts.</noscript>
+<script type="module" src="./assets/app.js"></script>
+</body></html>
