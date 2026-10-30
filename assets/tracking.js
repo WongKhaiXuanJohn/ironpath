@@ -1,4 +1,4 @@
-import {nextLoad,validDate} from './core.js?v=20261030b';
+import {nextLoad,validDate} from './core.js?v=20261030d';
 export const measurementFields=[
  {key:'weight',label:'Body weight',unit:'kg',min:35,max:250,step:.1},
  {key:'bodyfat',label:'Percent body fat (PBF)',unit:'%',min:3,max:60,step:.1},
@@ -45,6 +45,7 @@ export function recommendSet(ex,sessions,date,index,type='working'){
  let kg=row?Number(row.kg):ex.loadType==='bodyweight'||ex.loadType==='cardio'?0:ex.loadType==='assisted'?20:Number.isFinite(first)?first:(samples[ex.id]??4);
  if(type!=='warmup'&&progression?.kg!==null&&progression?.kg!==undefined)kg=progression.kg;
  if(type==='warmup')return {kg:ex.loadType==='kg'?Math.floor(kg*.5/0.5)*.5:kg,reps:Math.min(8,ex.min),source:prior?'Warm-up example from your history':'Warm-up example',date:prior?.date};
- const reps=row&&kg===Number(row.kg)?Math.max(ex.min,Math.min(ex.max,Number(row.reps)+1)):ex.min;
+ const easy=ex.loadType==='cardio'||ex.muscle==='Mobility';
+ const reps=row&&kg===Number(row.kg)?Math.max(ex.min,Math.min(ex.max,Number(row.reps)+(easy?0:1))):ex.min;
  return {kg,reps,source:prior?'From your history':'Starter example',date:prior?.date};
 }

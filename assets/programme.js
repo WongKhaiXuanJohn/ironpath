@@ -43,8 +43,29 @@ export const programme=[
  e('treadmill','Incline Treadmill Walking',1,15,20,'15–20 minutes · easy/moderate','Cardio','Choose a pace and incline you can recover from. Log minutes in the reps/min field.','cardio')
  ]}
 ];
-// Optional days share exercise identities so prior actual loads remain useful.
-for(const [day,short] of [['Saturday','SAT'],['Sunday','SUN']])programme.push({...programme[4],day,short,title:'Your pace. Your optional session.',note:'Choose this session only if you feel recovered. Rest is equally valid; optional days never count toward the four core sessions.',exercises:programme[4].exercises.map(ex=>({...ex}))});
+// Keep the original weekend template available for already-saved workout logs.
+const legacyWeekendExercises=programme[4].exercises.map(ex=>({...ex}));
+programme.push(
+ {day:'Saturday',short:'SAT',title:'Extra legs. Supported, not exhausting.',focus:'Optional machine legs, calves, abs & cycling',time:'35–50 min',tag:'Optional lower-body accessories',note:'Only add this if you have recovered from Thursday. Keep loads controlled and stop well before struggling; this is extra practice, not another heavy leg day. Choose fewer exercises or rest if soreness, joint discomfort or performance suggest you need recovery. Skipping it leaves the core plan complete.',exercises:[
+ e('leg-extension-sat','Leg Extension Machine',2,12,15,'10–25 kg · machine-dependent','Quads','Align the machine pivot with your knee. Lift and lower smoothly through a comfortable range without kicking or locking forcefully.'),
+ e('leg-curl-sat','Seated Leg Curl',2,12,15,'15–30 kg · lighter than core day','Hamstrings','Keep your hips supported and use a lighter, controlled load than your core sessions. Avoid forcing range or adding sets when still sore.'),
+ e('seated-calf-sat','Seated Calf Raise',2,12,20,'10–25 kg · machine-dependent','Calves','Use a comfortable full range with a brief pause. Keep the movement slow rather than bouncing.'),
+ e('ab-machine-sat','Seated Abdominal Crunch Machine',2,10,15,'5–15 kg · machine-dependent','Abs','Adjust the seat and pads to your body. Curl your ribs toward your pelvis without pulling through your arms or jerking your back.'),
+ e('bike-sat','Stationary Bike',1,15,20,'15–20 minutes · easy/moderate','Cardio','Use a comfortable resistance and a pace that lets you speak in full sentences. Reduce the duration or skip it when your legs need rest.','cardio')
+ ]},
+ {day:'Sunday',short:'SUN',title:'Move easily. Arrive fresh on Monday.',focus:'Optional easy conditioning & standing mobility',time:'25–40 min',tag:'Optional recovery session',note:'Keep this genuinely easy. There is no extra chest, shoulder or arm lifting before Monday. These movement blocks are for comfortable activity, not hypertrophy volume. A full rest day is equally valid; do not turn the optional days into a seven-day lifting requirement.',exercises:[
+ e('elliptical-sun','Elliptical Trainer',1,20,30,'20–30 minutes · conversational pace','Cardio','Use a low resistance and a comfortable pace with relaxed shoulders. Avoid sprints or hard intervals; finish feeling able to do more. An easy walk is a practical substitute.','cardio'),
+ e('wall-slide-sun','Standing Wall Slide',2,8,12,'Bodyweight · easy comfortable reps','Mobility','Stand comfortably by a wall and slowly slide your arms upward through a pain-free range. Keep your ribs relaxed; do not force your wrists or shoulders against the wall.','bodyweight'),
+ e('hip-circle-sun','Supported Standing Hip Circles',1,8,10,'Bodyweight · each direction, each side','Mobility','Hold a stable support and make small, controlled hip circles. Count reps for each direction on each side. Stay within a comfortable range; this is gentle mobility, not a balance challenge.','bodyweight')
+ ]}
+);
+export function programmeForSession(dayIndex,savedSession){
+ const current=programme[dayIndex];
+ if(dayIndex<5)return current;
+ const ids=Object.keys(savedSession?.exercises||{});
+ if(ids.some(id=>legacyWeekendExercises.some(ex=>ex.id===id))&&!ids.some(id=>current.exercises.some(ex=>ex.id===id)))return {...current,archived:true,title:'Your saved weekend workout.',focus:'Previous optional shoulders, arms & cardio template',tag:'Saved optional session',time:'35–50 min',note:'This is the original template used for this saved session. Its exercises and logs have been preserved. New dates use the revised weekend programme.',exercises:legacyWeekendExercises};
+ return current;
+}
 export const volumes=[['Chest',11],['Back',10],['Shoulders',11],['Biceps',6],['Triceps',6],['Quads',8],['Hamstrings',6],['Calves',5],['Abs',6]];
 export const phases=[
  {title:'Foundation & initial fat loss',label:'Build the habit',weeks:'01–13',text:'Calibrate your working weights in the first two weeks. Establish four consistent sessions and begin gradual fat loss. Use fewer accessory sets if soreness is excessive.'},

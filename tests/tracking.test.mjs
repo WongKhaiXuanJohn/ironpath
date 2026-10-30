@@ -40,7 +40,7 @@ test('new measurement records, weekend sessions and legacy backup fields remain 
 test('all seven programme days have finite suggestions with explicit load conventions',()=>{
  assert.equal(programme.length,7);
  for(const day of programme)for(const e of day.exercises){const r=recommendSet(e,{},'2026-10-30',0);assert.ok(Number.isFinite(r.kg));assert.ok(r.reps>0);}
- assert.match(programme[5].exercises[0].trial,/hand/);
+ assert.match(programme[4].exercises[0].trial,/hand/);
 });
 test('chart handles a single reading and sparse dates without invalid SVG',()=>{
  const f=measurementFields.find(f=>f.key==='ecw');
@@ -55,4 +55,11 @@ test('week/month grouping and missing measurements never create zero averages',(
  assert.deepEqual(aggregateMeasurements(rows,'muscle','month').map(r=>r.value),[30,32]);
  assert.deepEqual(aggregateMeasurements(rows,'muscle','week').map(r=>r.value),[31]);
  assert.equal(aggregateMeasurements(rows,'proteinMass').length,0);
+});
+test('recovery cardio and mobility repeat comfortable prior work without an automatic increase',()=>{
+ for(const ex of programme[6].exercises){
+  const reps=Math.min(ex.max,ex.min+1),sessions={'2026-10-20':{6:{exercises:{[ex.id]:[{type:'working',kg:0,reps,done:true}]},complete:true}}};
+  assert.equal(recommendSet(ex,sessions,'2026-10-30',0).reps,reps);
+  assert.equal(nextLoad(ex,sessions['2026-10-20'][6].exercises[ex.id]).kg,null);
+ }
 });

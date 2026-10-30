@@ -1,4 +1,4 @@
-import {measurementFields,aggregateMeasurements} from './tracking.js?v=20261030b';
+import {measurementFields,aggregateMeasurements} from './tracking.js?v=20261030d';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 const number=(n,key)=>Number(n).toLocaleString('en-GB',{maximumFractionDigits:['metabolism','inbodyScore','visceralFat'].includes(key)?0:key==='ecw'?3:key==='waistHip'?2:1});

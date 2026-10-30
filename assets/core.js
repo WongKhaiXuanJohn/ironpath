@@ -12,6 +12,8 @@ export function calculateNutrition(p){
   return {bmr,maintenance,calories,protein,fat,carbs,whey,foodProtein:Math.max(0,protein-whey),override:hasOverride};
 }
 export function nextLoad(exercise,sets){
+  if(exercise.muscle==='Mobility')return {kg:null,message:'Move comfortably and slowly. This is mobility practice, not a load-progression target.'};
+  if(exercise.loadType==='cardio')return {kg:null,message:'Keep a conversational pace. Repeat a comfortable duration and only build it gradually when recovery is good.'};
   if(exercise.loadType!=='kg')return {kg:null,message:'Progress control and reps first; adjust assistance or load manually.'};
   const work=sets.filter(s=>s.type==='working');
   if(!work.length||work.some(s=>!s.done||!numeric(s.kg,.5,1000)||!numeric(s.reps,1,100)))return {kg:null,message:'Log and complete your working sets to see a next-session suggestion.'};

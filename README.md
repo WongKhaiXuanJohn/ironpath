@@ -11,6 +11,12 @@ Open the website, choose **Your profile** (the top-right avatar on mobile) and e
 - **Progress:** body weight, PBF, skeletal muscle mass, body protein mass (kg), basal metabolism and waist. Optional InBody readings include fat mass, total body water, BMI, ECW ratio, score, visceral fat and waist–hip ratio. Each metric has its own chart with custom dates, 30/90/365-day or all-time ranges, and daily readings or weekly/monthly averages. Missing readings are omitted, never treated as zero. Weeks begin Monday. A dated report and journal allow previous records to be reopened and edited. Updating current profile weight is opt-in.
 - **Roadmap:** four adaptive 13-week phases, with a configurable start date.
 
+### Programme review
+
+Saturday now provides optional supported machine legs, calves, abs and easy cycling. Sunday provides easy elliptical conditioning and standing mobility, protecting Monday's upper-body work. Friday remains optional shoulders/arms/cardio. Rest remains valid; the goal is not seven hard lifting days. Previously saved weekend sessions reopen with their original exercise template.
+
+The research review and full-week volume audit are in [the programme review](docs/programme-review-2026-10-30.md), with an evidence summary in the website's 52-week plan. The exact split and trial loads are programming choices, not a clinically validated personal prescription.
+
 ## Data privacy and backups
 
 New workout, nutrition and body-composition entries default to today's local date. The date selectors load earlier entries; **Today** returns to the current date. The app refreshes its date at midnight or on returning to the tab. Dates are stored as ISO `YYYY-MM-DD` keys, ready for a future per-user Firebase integration; no database is configured by this upgrade.
