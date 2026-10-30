@@ -6,12 +6,16 @@ A responsive 52-week gym tracker with an editable profile, personalized nutritio
 
 Open the website, choose **Your profile** (the top-right avatar on mobile) and enter your age, height, weight, activity level and goal. Nutrition targets preview instantly; save to apply. Profile age starts blank because it must not be guessed.
 
-- **Workouts:** fixed Monday–Thursday core programme, optional Friday, weekends off. Log actual load, reps and RIR; warm-ups are separate. Mark good form and completion per set. Double progression suggestions require all prescribed working sets at the rep ceiling, consistent load, good form and at least two RIR. Trial loads are examples, not verified prescriptions.
+- **Workouts:** Monday–Thursday core programme with optional Friday, Saturday and Sunday. Add/delete warm-up and working sets (up to 20 per exercise); undo the last removal. RIR/Form are no longer collected. Per-set suggestions use previous actual records when available, otherwise clearly labelled starter examples. Actual fields start empty; suggestions never count as completed work. Next-load suggestions use all selected working sets, and remain conditional on controlled technique and recovery. The journal includes partial and completed sessions with date filters.
 - **Nutrition:** estimated calories and macros update from profile details. Optional manual calorie override; optional whey planning at 24 g protein per scoop. Daily totals include meals and supplements.
-- **Progress:** body-weight, waist and optional body-fat check-ins; actual weight chart, recent workout history and seven-day average. Weight check-ins can update the profile and targets.
+- **Progress:** body weight, PBF, skeletal muscle mass, body protein mass (kg), basal metabolism and waist. Optional InBody readings include fat mass, total body water, BMI, ECW ratio, score, visceral fat and waist–hip ratio. Each metric has its own chart with custom dates, 30/90/365-day or all-time ranges, and daily readings or weekly/monthly averages. Missing readings are omitted, never treated as zero. Weeks begin Monday. A dated report and journal allow previous records to be reopened and edited. Updating current profile weight is opt-in.
 - **Roadmap:** four adaptive 13-week phases, with a configurable start date.
 
 ## Data privacy and backups
+
+New workout, nutrition and body-composition entries default to today's local date. The date selectors load earlier entries; **Today** returns to the current date. The app refreshes its date at midnight or on returning to the tab. Dates are stored as ISO `YYYY-MM-DD` keys, ready for a future per-user Firebase integration; no database is configured by this upgrade.
+
+Version-1 backups remain compatible, including archived RIR/Form values. These old fields are retained in imported records but no longer affect progression. The public repository includes no personal readings from reference photos.
 
 All entered data lives in `localStorage` in the current browser on the current origin. There is no cloud sync, login, analytics or server database. Source code and the standard exercise programme are public; your logged records are not committed or uploaded. Export JSON backups from **Your profile** regularly. Import on another device to transfer data. Local-preview data and the live site's data are separate. Clearing browser data can erase entries. Keep exported backups private.
 

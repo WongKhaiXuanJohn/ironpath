@@ -13,14 +13,14 @@ export function calculateNutrition(p){
 }
 export function nextLoad(exercise,sets){
   if(exercise.loadType!=='kg')return {kg:null,message:'Progress control and reps first; adjust assistance or load manually.'};
-  const work=sets.filter(s=>s.type==='working'&&s.done);
-  if(work.length<exercise.sets||work.some(s=>!numeric(s.kg,0,1000)||!numeric(s.reps,1,100)||!numeric(s.rir,0,10)))return {kg:null,message:'Complete all working sets to see a next-session suggestion.'};
+  const work=sets.filter(s=>s.type==='working');
+  if(!work.length||work.some(s=>!s.done||!numeric(s.kg,.5,1000)||!numeric(s.reps,1,100)))return {kg:null,message:'Log and complete your working sets to see a next-session suggestion.'};
   const load=Number(work[0].kg);
-  if(work.length===exercise.sets&&work.every(s=>Number(s.kg)===load&&Number(s.reps)>=exercise.max&&Number(s.rir)>=2&&s.form===true))return {kg:load+exercise.increment,message:'Rep ceiling reached with clean form and 2+ RIR. Consider the smallest available increase.'};
+  if(work.every(s=>Number(s.kg)===load&&Number(s.reps)>=exercise.max))return {kg:load+exercise.increment,message:'Rep target reached across your working sets. Consider a small increase only if the load felt controlled.'};
   return {kg:load,message:'Keep the load and build clean reps. Reduce if form breaks down or you miss minimum reps.'};
 }
 export function programmeWeek(start,date){if(!validDate(start)||!validDate(date))throw Error('Invalid date');return Math.min(53,Math.max(0,Math.floor((Date.parse(date)-Date.parse(start))/604800000)+1));}
-export function weeklyAverage(records,date){const end=Date.parse(date),start=end-6*86400000;const recent=records.filter(r=>Date.parse(r.date)>=start&&Date.parse(r.date)<=end);return recent.length?recent.reduce((s,r)=>s+Number(r.weight),0)/recent.length:null;}
+export function weeklyAverage(records,date){const end=Date.parse(date),start=end-6*86400000;const recent=records.filter(r=>Date.parse(r.date)>=start&&Date.parse(r.date)<=end&&numeric(r.weight,35,250));return recent.length?recent.reduce((s,r)=>s+Number(r.weight),0)/recent.length:null;}
 export function validateBackup(b){
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>!['__proto__','prototype','constructor'].includes(k));
   if(!object(b)||b.version!==1||!object(b.profile)||!object(b.sessions)||!Array.isArray(b.measurements)||!object(b.nutrition))return false;
@@ -28,13 +28,14 @@ export function validateBackup(b){
   if(p.age!==''){try{calculateNutrition(p);}catch{return false;}}
   else if(!numeric(p.weight,35,250)||!numeric(p.height,120,230))return false;
   if(p.start!==undefined&&!validDate(p.start))return false;
-  if(b.measurements.some(r=>!object(r)||!validDate(r.date)||!numeric(r.weight,35,250)||(r.waist!==''&&r.waist!==undefined&&!numeric(r.waist,30,250))||(r.bodyfat!==''&&r.bodyfat!==undefined&&!numeric(r.bodyfat,3,60))))return false;
+  const metrics=[['weight',35,250],['waist',30,250],['bodyfat',3,60],['muscle',1,150],['bodyProtein',1,40],['proteinMass',1,60],['metabolism',500,5000],['fatMass',1,180],['bodyWater',5,150],['bmi',10,80],['ecw',.2,.6],['inbodyScore',0,100],['visceralFat',1,50],['waistHip',.4,2]];
+  if(b.measurements.some(r=>!object(r)||!validDate(r.date)||!metrics.some(([key])=>r[key]!==undefined&&r[key]!=='')||metrics.some(([key,min,max])=>r[key]!==undefined&&r[key]!==''&&!numeric(r[key],min,max))))return false;
   for(const [date,days]of Object.entries(b.sessions)){
     if(!validDate(date)||!object(days))return false;
     for(const [day,session]of Object.entries(days)){
-      if(!/^[0-4]$/.test(day)||!object(session)||!object(session.exercises)||typeof session.complete!=='boolean')return false;
+      if(!/^[0-6]$/.test(day)||!object(session)||!object(session.exercises)||typeof session.complete!=='boolean')return false;
       for(const [id,sets]of Object.entries(session.exercises)){
-        if(!/^[a-z0-9-]+$/.test(id)||!Array.isArray(sets)||sets.length>20||sets.some(s=>!object(s)||!['working','warmup'].includes(s.type)||!numeric(s.kg,0,1000)||!numeric(s.reps,0,100)||!numeric(s.rir,0,10)||typeof s.done!=='boolean'||typeof s.form!=='boolean'))return false;
+        if(!/^[a-z0-9-]+$/.test(id)||!Array.isArray(sets)||sets.length>20||sets.some(s=>!object(s)||!['working','warmup'].includes(s.type)||!numeric(s.kg,0,1000)||!numeric(s.reps,0,100)||(s.rir!==undefined&&!numeric(s.rir,0,10))||typeof s.done!=='boolean'||(s.form!==undefined&&typeof s.form!=='boolean')))return false;
       }
     }
   }

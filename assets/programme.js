@@ -1,6 +1,6 @@
 const e=(id,name,sets,min,max,trial,muscle,cue,loadType='kg',increment=2.5)=>({id,name,sets,min,max,trial,muscle,cue,loadType,increment});
 export const programme=[
- {day:'Monday',short:'MON',title:'Build your upper body.',focus:'Chest, shoulders, triceps & abs',time:'65–80 min',tag:'Chest priority',note:'Bench first. Use 2–4 progressive warm-up sets, then work with 2–3 clean reps in reserve.',exercises:[
+ {day:'Monday',short:'MON',title:'Build your upper body.',focus:'Chest, shoulders, triceps & abs',time:'65–80 min',tag:'Chest priority',note:'Bench first. Use progressive warm-up sets and leave a little capacity for clean repetitions.',exercises:[
  e('bench','Barbell Bench Press',3,6,8,'40–60 kg','Chest','Set your feet, brace and keep a stable upper back. Lower under control; use safeties or a spotter.'),
  e('incline-db','Incline Dumbbell Press',3,8,12,'12–20 kg / hand','Chest','Use a comfortable incline and controlled range. Keep your elbows and shoulders comfortable.','kg',1),
  e('supported-row-mon','Chest-Supported Row',2,8,12,'20–40 kg','Back','Keep your chest on the pad. Pull through the elbows without throwing the torso back.'),
@@ -9,7 +9,7 @@ export const programme=[
  e('pushdown-mon','Rope Triceps Pushdown',3,10,15,'15–30 kg','Triceps','Keep elbows close to your sides and extend without rocking the torso.'),
  e('captain','Captain’s Chair Knee Raise',3,10,15,'Bodyweight','Abs','Support your forearms, keep the torso mostly stable and curl your pelvis toward your ribs at the top. A slight forward lean is fine. Lower without swinging.','bodyweight')
  ]},
- {day:'Tuesday',short:'TUE',title:'Lay the strength foundation.',focus:'Squat, overhead press & deadlift',time:'55–70 min',tag:'Strength priority',note:'Alternate emphasis weekly: A = squat ~2 RIR, deadlift 3–4 RIR. B = squat 3–4 RIR, deadlift ~2 RIR. Never max both.',exercises:[
+ {day:'Tuesday',short:'TUE',title:'Lay the strength foundation.',focus:'Squat, overhead press & deadlift',time:'55–70 min',tag:'Strength priority',note:'Alternate your emphasis: in week A, push squat while keeping deadlift lighter; in week B, reverse that balance. Keep both controlled.',exercises:[
  e('squat','Barbell Back Squat',3,4,6,'50–75 kg','Quads','Brace before each rep. Use progressive ramp-up sets and a controlled depth you can maintain.'),
  e('ohp','Standing Barbell Overhead Press',3,5,8,'20–35 kg','Shoulders','Brace your trunk and avoid excessive back extension as the bar passes your face.'),
  e('deadlift','Conventional Deadlift',2,3,5,'60–90 kg','Posterior chain','Set up consistently and brace. Stop the set if spine position or technique degrades.'),
@@ -31,18 +31,20 @@ export const programme=[
  e('rdl','Romanian Deadlift',2,8,10,'30–55 kg','Hamstrings','Hinge at your hips with soft knees, keeping the load close. Stop before losing position.'),
  e('curl-thu','Seated Leg Curl',2,10,15,'20–40 kg','Hamstrings','Keep your hips in contact with the seat. Control both directions.'),
  e('incline-machine','Incline Chest Press Machine',3,8,12,'25–45 kg','Chest','Adjust the seat for a comfortable pressing path. Keep your shoulders stable.'),
- e('lateral-thu','Dumbbell Lateral Raise',2,12,20,'Controlled load','Shoulders','Use smooth reps and no momentum.','kg',1),
- e('extension','Dumbbell Overhead Triceps Extension',3,10,15,'Controlled load','Triceps','Keep the upper arms stable and choose a comfortable shoulder and elbow position.','kg',1),
+ e('lateral-thu','Dumbbell Lateral Raise',2,12,20,'4–8 kg / hand','Shoulders','Use smooth reps and no momentum.','kg',1),
+ e('extension','Dumbbell Overhead Triceps Extension',3,10,15,'6–12 kg total','Triceps','Keep the upper arms stable and choose a comfortable shoulder and elbow position.','kg',1),
  e('calf-thu','Standing Calf Raise',2,12,20,'25–50 kg','Calves','Pause through the range; avoid bouncing.')
  ]},
  {day:'Friday',short:'FRI',title:'A little extra, if you feel good.',focus:'Optional shoulders, arms & cardio',time:'35–50 min',tag:'Always optional',note:'Skipping Friday creates no training deficit. Do not redistribute these sets. Optional supported abs may be added; no floor exercises.',exercises:[
- e('lateral-fri','Dumbbell Lateral Raise',2,12,20,'Controlled load','Shoulders','Keep this session low-fatigue and controlled.','kg',1),
- e('preacher','Preacher Curl',2,10,15,'Controlled load','Biceps','Keep your upper arms supported and lower slowly.'),
- e('pushdown-fri','Rope Triceps Pushdown',2,10,15,'Controlled load','Triceps','Keep elbows close and avoid body momentum.'),
- e('rear-fri','Rear Delt Fly',2,12,20,'Controlled load','Shoulders','Use a supported position and controlled range.'),
+ e('lateral-fri','Dumbbell Lateral Raise',2,12,20,'4–8 kg / hand','Shoulders','Keep this session low-fatigue and controlled.','kg',1),
+ e('preacher','Preacher Curl',2,10,15,'10–20 kg total','Biceps','Keep your upper arms supported and lower slowly.'),
+ e('pushdown-fri','Rope Triceps Pushdown',2,10,15,'15–30 kg','Triceps','Keep elbows close and avoid body momentum.'),
+ e('rear-fri','Rear Delt Fly',2,12,20,'4–8 kg / hand','Shoulders','Use a supported position and controlled range.'),
  e('treadmill','Incline Treadmill Walking',1,15,20,'15–20 minutes · easy/moderate','Cardio','Choose a pace and incline you can recover from. Log minutes in the reps/min field.','cardio')
  ]}
 ];
+// Optional days share exercise identities so prior actual loads remain useful.
+for(const [day,short] of [['Saturday','SAT'],['Sunday','SUN']])programme.push({...programme[4],day,short,title:'Your pace. Your optional session.',note:'Choose this session only if you feel recovered. Rest is equally valid; optional days never count toward the four core sessions.',exercises:programme[4].exercises.map(ex=>({...ex}))});
 export const volumes=[['Chest',11],['Back',10],['Shoulders',11],['Biceps',6],['Triceps',6],['Quads',8],['Hamstrings',6],['Calves',5],['Abs',6]];
 export const phases=[
  {title:'Foundation & initial fat loss',label:'Build the habit',weeks:'01–13',text:'Calibrate your working weights in the first two weeks. Establish four consistent sessions and begin gradual fat loss. Use fewer accessory sets if soreness is excessive.'},

@@ -1,0 +1,152 @@
+/* Ironpath journal and measurement surfaces. */
+.panel { box-shadow: 0 6px 24px #233c3003; }
+.exercise { padding: 25px 28px; margin-bottom: 18px; }
+.exercise-title h3 { font-size: 16px; letter-spacing: -.4px; }
+.exercise-title p { font-size: 11px; line-height: 1.7; }
+.exercise summary { font-size: 11px; }
+.exercise details p { line-height: 1.8; }
+.set-head, .set-row { grid-template-columns: 70px minmax(150px, 1.5fr) minmax(70px, 1fr) minmax(70px, 1fr) 44px 30px; gap: 12px; }
+.set-head { margin-top: 23px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 9px; letter-spacing: .7px; }
+.set-head span:nth-child(2) { text-align: left; }
+.set-row { padding: 10px 0; margin: 0; border-bottom: 1px solid #edf1eb; }
+.set-type { font-size: 11px; }
+.set-row input[type=number] { height: 46px; min-height: 46px; padding: 8px; border-radius: 9px; background: #fcfdfb; font-size: 14px; font-variant-numeric: tabular-nums; }
+.set-row input::placeholder { color: #a9b5aa; }
+.recommended-set { min-width: 0; line-height: 1.5; }
+.recommended-set > span { display: block; font-size: 12px; color: #4b6b52; }
+.recommended-set small { display: block; font-size: 9px; color: #879582; margin-top: 3px; }
+.remove-set { height: 32px; width: 30px; padding: 0; border: none; border-radius: 7px; background: transparent; color: #889489; font-size: 22px; }
+.remove-set:hover { color: #9a493b; background: #fff1eb; }
+.set-actions { margin-top: 17px; flex-wrap: wrap; }
+.set-actions .button { font-size: 11px; }
+.suggestion { font-size: 11px; line-height: 1.8; }
+.skipped-note { padding: 18px 0; color: var(--muted); font-size: 12px; }
+.workout-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+.date-control { display: flex; gap: 9px; align-items: end; max-width: 100%; }
+.date-control .field { min-width: 180px; }
+.date-control .button { height: 50px; min-width: 64px; font-size: 11px; }
+.record-status { font-size: 11px; color: #869080; line-height: 1.7; }
+.has-record { color: #477451; }
+.seven-days { margin-bottom: 20px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; overflow: visible; }
+.seven-days .day-tab { padding: 12px 6px; font-size: 12px; font-weight: 600; }
+.seven-days .day-tab small { display: block; font-size: 9px; margin-top: 3px; font-weight: 400; }
+.seven-days .day-tab.active small { color: #b7d3ae; }
+.undo-bar { display: flex; justify-content: space-between; align-items: center; background: #edf3e9; border: 1px solid #dbe6d1; border-radius: 10px; padding: 8px 16px; margin-bottom: 16px; font-size: 12px; }
+.session-finish { margin-top: 20px; margin-bottom: 25px; padding: 18px 22px; backdrop-filter: blur(16px); background: #fffffff5; }
+.history-panel { margin-top: 28px; }
+.history-filters { display: flex; gap: 14px; margin-bottom: 16px; }
+.history-filters .field { width: 190px; max-width: 50%; }
+.journal-list { display: grid; }
+.journal-entry { border: 0; border-bottom: 1px solid var(--line); padding: 16px 2px; background: transparent; color: var(--ink); display: flex; align-items: center; gap: 16px; text-align: left; }
+.journal-entry:hover { background: #f7faf3; }
+.journal-entry > span:first-child { flex: 1; }
+.journal-entry strong, .journal-entry small { display: block; }
+.journal-entry strong { font-size: 12px; font-weight: 500; }
+.journal-entry small { font-size: 10px; margin-top: 4px; }
+.week-day small { display: block; font-size: 8px; color: inherit; }
+#nutrition-form .form-actions { flex-wrap: wrap; }
+.panel:has(#nutrition-form) > .date-control { margin-bottom: 10px; }
+.panel:has(#nutrition-form) > .record-status { margin-bottom: 20px; }
+.composition-stats .stat { padding: 22px; }
+.metric-symbol { color: #7f9b6e; font-size: 18px; }
+.composition-stats .stat-top { font-size: 11px; gap: 8px; }
+.progress-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
+.progress-layout > .panel { padding: 26px; }
+.progress-layout .panel-heading { margin-bottom: 24px; }
+.trend-controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; }
+.trend-controls label.field { font-size: 10px; }
+.trend-controls label.field > select { font-size: 12px; height: 44px; min-height: 44px; padding-left: 11px; }
+.trend-dates { display: flex; gap: 12px; margin-top: 14px; }
+.trend-dates .field { width: 50%; font-size: 10px; }
+.trend-dates label.field > input { height: 42px; min-height: 42px; font-size: 12px; }
+.trend-summary { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 26px 0 8px; padding-top: 23px; border-top: 1px solid var(--line); }
+.trend-summary strong { font: 700 34px 'Manrope', sans-serif; letter-spacing: -1px; }
+.trend-summary strong small { font: 400 12px 'DM Sans', sans-serif; letter-spacing: 0; }
+.trend-summary .eyebrow { font-size: 8px; margin-bottom: 8px; }
+.trend-summary > div:last-child { text-align: right; }
+.trend-summary b { display: block; font-size: 15px; font-weight: 500; }
+.trend-summary > div > small { display: block; font-size: 10px; margin-top: 5px; }
+.metric-chart svg { display: block; width: 100%; height: auto; min-height: 210px; overflow: visible; }
+.metric-chart text { font: 12px 'DM Sans', sans-serif; fill: #82907d; }
+.chart-note { color: #83907f; font-size: 10px; line-height: 1.8; margin-top: 15px; }
+.chart-data { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 20px; font-size: 11px; }
+.chart-data summary { cursor: pointer; color: var(--green); }
+.trend-empty { min-height: 245px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: #71846b; padding: 25px; background: #f8faf5; border-radius: 12px; margin-top: 20px; }
+.trend-empty > span { font-size: 42px; opacity: .6; }
+.trend-empty h3 { font-size: 17px; margin: 4px 0 10px; }
+.trend-empty p { font-size: 12px; max-width: 310px; line-height: 1.8; }
+#measurement-form .date-control { margin-top: 20px; }
+#measurement-form .record-status { margin: 10px 0 20px; }
+#measurement-form .field { font-size: 11px; }
+#measurement-form .unit-label { color: #879782; font-size: 10px; font-weight: 400; margin-left: 3px; }
+#measurement-form .form-grid { gap: 17px 14px; }
+.check-label { display: flex; gap: 10px; align-items: flex-start; font-size: 11px; line-height: 1.7; color: #73806d; margin-top: 18px; }
+.check-label input { accent-color: var(--green); flex: none; margin-top: 4px; }
+.advanced-readings { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+.advanced-readings summary { font-size: 12px; cursor: pointer; color: var(--green); }
+.advanced-readings summary span { color: #93a08b; font-size: 10px; margin-left: 7px; }
+.advanced-readings .form-grid { margin-top: 20px; }
+.report-header { display: flex; justify-content: space-between; align-items: start; gap: 18px; margin: 24px 0; }
+.report-header h3 { font-size: 22px; letter-spacing: -.7px; }
+.report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.report-grid > div { padding: 20px; border-bottom: 1px solid var(--line); background: #fbfcf8; }
+.report-grid > div > span { display: block; font-size: 11px; color: #7d8c78; margin-bottom: 10px; }
+.report-grid strong { display: block; font: 600 25px 'Manrope', sans-serif; }
+.report-grid small { font: 400 11px 'DM Sans', sans-serif; }
+.measurement-history th { white-space: nowrap; }
+.measurement-history th small { display: block; font-size: 9px; margin-top: 3px; }
+.measurement-history td { font-variant-numeric: tabular-nums; }
+.progress-note { margin-top: 24px; }
+.panel:has(.report-grid) { margin-bottom: 24px; }
+.form-error:empty { display: none; }
+@media (max-width: 1250px) { .progress-layout { grid-template-columns: minmax(0, 1fr); } .progress-layout .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .exercise { padding: 22px; } .set-head,.set-row { grid-template-columns: 56px minmax(115px, 1.2fr) minmax(58px, 1fr) minmax(58px, 1fr) 34px 26px; gap: 8px; } .composition-stats .stat { padding: 18px; } }
+@media (max-width: 640px) {
+ .exercise { padding: 20px 16px; }
+ .exercise-title h3 { font-size: 14px; }
+ .exercise-title p { font-size: 10px; }
+ .set-head,.set-row { grid-template-columns: 54px minmax(0,1fr) minmax(0,1fr) 32px 26px; gap: 8px; }
+ .set-head span:nth-child(2) { display: none; }
+ .set-head { font-size: 8px; letter-spacing: .2px; }
+ .set-row { padding: 12px 0; row-gap: 7px; }
+ .set-row .set-type { grid-column: 1; grid-row: 1; font-size: 10px; }
+ .set-row input[data-field=kg] { grid-column: 2; grid-row: 1; }
+ .set-row input[data-field=reps] { grid-column: 3; grid-row: 1; }
+ .set-row .done-check { grid-column: 4; grid-row: 1; }
+ .set-row .remove-set { grid-column: 5; grid-row: 1; }
+ .set-row .recommended-set { grid-column: 2 / -1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: baseline; }
+ .recommended-set > span { font-size: 10px; }
+ .recommended-set > span:before { content: 'Suggested: '; color: #8b9784; }
+ .recommended-set small { font-size: 8px; margin: 0; }
+ .set-row input[type=number] { font-size: 16px; }
+ .set-actions { gap: 14px; }
+ .set-actions .actions { gap: 7px; }
+ .set-actions .button { font-size: 10px; }
+ .workout-toolbar { align-items: flex-start; flex-direction: column; gap: 9px; }
+ .seven-days { gap: 4px; }
+ .seven-days .day-tab { padding: 11px 1px; font-size: 10px; min-width: 0; }
+ .seven-days .day-tab small { font-size: 7px; }
+ .date-control .field { min-width: 0; flex: 1; }
+ .date-control { width: 100%; }
+ .session-finish { padding: 14px; gap: 8px; }
+ .session-finish p { font-size: 10px; }
+ .session-finish small { font-size: 8px; }
+ .session-finish .button { font-size: 10px; padding: 11px; }
+ .history-filters label.field > input { font-size: 14px; }
+ .progress-layout { gap: 18px; }
+ .progress-layout > .panel { padding: 22px 18px; }
+ .progress-layout .form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .trend-controls { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .trend-controls > .field:first-child { grid-column: 1/-1; }
+ .trend-controls label.field > select { font-size: 16px; }
+ .trend-dates label.field > input { font-size: 14px; }
+ .trend-summary strong { font-size: 29px; }
+ .trend-summary b { font-size: 13px; }
+ .trend-summary .eyebrow { font-size: 7px; }
+ .metric-chart svg { min-height: 190px; }
+ .report-header { flex-direction: column; }
+ .report-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .report-grid > div { padding: 16px 13px; }
+ .report-grid strong { font-size: 23px; }
+ .report-grid > div > span { font-size: 10px; }
+}
