@@ -1,7 +1,7 @@
 import {calculateNutrition,nextLoad,programmeWeek,weeklyAverage,validateBackup,validDate} from './core.js?v=20261030b';
 import {programme,volumes,phases} from './programme.js?v=20261030b';
 import {measurementFields,recommendSet,previousExercise} from './tracking.js?v=20261030b';
-import {progressView} from './progress-ui.js?v=20261030b';
+import {progressView} from './progress-ui.js?v=20261030c';
 
 const $=s=>document.querySelector(s);
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

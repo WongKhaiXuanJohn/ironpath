@@ -27,8 +27,19 @@ label.field > select {
   background-position: right 14px center;
   text-overflow: ellipsis;
 }
-label.field > input[type=date] { -webkit-appearance: none; appearance: none; }
-label.field > input[type=date]::-webkit-date-and-time-value { text-align: left; }
+/* Safari does not centre its native date editor inside a fixed-height input.
+   Give that inner editor an explicit line box and balanced vertical padding. */
+:root label.field > input[type=date] {
+  --date-control-height: 50px;
+  --date-line-height: 22px;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: var(--date-line-height);
+  padding-block: calc((var(--date-control-height) - var(--date-line-height) - 2px) / 2);
+  font-variant-numeric: tabular-nums;
+}
+label.field > input[type=date]::-webkit-datetime-edit { padding: 0; line-height: var(--date-line-height); }
+label.field > input[type=date]::-webkit-date-and-time-value { min-height: var(--date-line-height); line-height: var(--date-line-height); text-align: left; }
 label.field > input:hover, label.field > select:hover { border-color: #a9bcac; }
 label.field > input:focus, label.field > select:focus {
   border-color: #688d73;
