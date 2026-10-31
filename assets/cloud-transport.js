@@ -1,3 +1,4 @@
+import {createSnapshotJoin} from './cloud-snapshot-join.js?v=20261031c';
 export function createFirebaseTransport(config){
  let auth,db,a,f,initializing,unsubscribeAuth,startId=0;
  return {
@@ -17,13 +18,19 @@ export function createFirebaseTransport(config){
   async signIn(){const provider=new a.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await a.signInWithPopup(auth,provider);},
   async signOut(){await a.signOut(auth);},
   listen(uid,onRecords,onError){
-   return f.onSnapshot(f.collection(db,'users',uid,'records'),{includeMetadataChanges:true},snapshot=>{
+   const join=createSnapshotJoin(onRecords);
+   const stopRecords=f.onSnapshot(f.collection(db,'users',uid,'records'),{includeMetadataChanges:true},snapshot=>{
     if(snapshot.metadata.fromCache||snapshot.metadata.hasPendingWrites)return;
-    onRecords(Object.fromEntries(snapshot.docs.map(d=>[d.id,d.data()])));
+    join.records(Object.fromEntries(snapshot.docs.map(d=>[d.id,d.data()])));
    },onError);
+   const stopTraining=f.onSnapshot(f.doc(db,'users',uid,'settings','training'),{includeMetadataChanges:true},snapshot=>{
+    if(snapshot.metadata.fromCache||snapshot.metadata.hasPendingWrites)return;
+    join.training(snapshot.exists()?snapshot.data():null);
+   },onError);
+   return ()=>{stopRecords();stopTraining();};
   },
   async write(uid,m){
-   const ref=f.doc(db,'users',uid,'records',m.id);
+   const ref=m.id==='training'?f.doc(db,'users',uid,'settings','training'):f.doc(db,'users',uid,'records',m.id);
    return f.runTransaction(db,async tx=>{
     const snapshot=await tx.get(ref),current=snapshot.exists()?snapshot.data():null;
     if(current?.mutationId===m.mutationId)return current;

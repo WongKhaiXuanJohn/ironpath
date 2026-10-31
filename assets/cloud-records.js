@@ -30,6 +30,7 @@ function canonicalState(state){
 }
 function metadata(id){
  if(id==='profile')return {kind:'profile',date:'',day:-1};
+ if(id==='training')return {kind:'training',date:'',day:-1};
  const match=/^(session|nutrition|measurement)_(\d{4}-\d{2}-\d{2})(?:_([0-6]))?$/.exec(id);
  if(!match||!validDate(match[2])||(match[1]==='session')!==(match[3]!==undefined))throw Error('Unrecognized cloud record.');
  return {kind:match[1],date:match[2],day:match[3]===undefined?-1:Number(match[3])};
@@ -37,7 +38,9 @@ function metadata(id){
 const record=(id,data,deleted=false)=>({schema:1,...metadata(id),data:deleted?null:copy(data),deleted,revision:0,mutationId:''});
 export function stateToRecords(state){
  state=canonicalState(state);
- const records={profile:record('profile',state.profile)};
+ const profile=copy(state.profile),training=profile.training;delete profile.training;
+ const records={profile:record('profile',profile)};
+ if(training)records.training=record('training',training);
  for(const [date,days]of Object.entries(state.sessions))for(const [day,value]of Object.entries(days)){const id=`session_${date}_${day}`;records[id]=record(id,value);}
  for(const [date,value]of Object.entries(state.nutrition)){const id=`nutrition_${date}`;records[id]=record(id,value);}
  for(const value of state.measurements){const id=`measurement_${value.date}`;records[id]=record(id,value);}
@@ -50,6 +53,7 @@ function validateRecord(id,r,initial){
  if(!plain(r.data)||JSON.stringify(r.data).length>200000)throw Error('Invalid cloud record values.');
  const state=initial();
  if(meta.kind==='profile')state.profile=copy(r.data);
+ if(meta.kind==='training')state.profile.training=copy(r.data);
  if(meta.kind==='session')state.sessions[meta.date]={[meta.day]:copy(r.data)};
  if(meta.kind==='nutrition')state.nutrition[meta.date]=copy(r.data);
  if(meta.kind==='measurement'){if(r.data.date!==meta.date)throw Error('Cloud record date mismatch.');state.measurements=[copy(r.data)];}
@@ -57,14 +61,17 @@ function validateRecord(id,r,initial){
 }
 export function recordsToState(records,initial){
  if(!plain(records))throw Error('Invalid cloud snapshot.');
- const state=initial();
+ const state=initial();let training,trainingSeen=false;
  for(const [id,r]of Object.entries(records)){
-  validateRecord(id,r,initial);if(r.deleted)continue;
+  validateRecord(id,r,initial);
+  if(r.kind==='training'){trainingSeen=true;training=r.deleted?null:copy(r.data);continue;}
+  if(r.deleted)continue;
   if(r.kind==='profile')state.profile=copy(r.data);
   if(r.kind==='session'){state.sessions[r.date]??={};state.sessions[r.date][r.day]=copy(r.data);}
   if(r.kind==='nutrition')state.nutrition[r.date]=copy(r.data);
   if(r.kind==='measurement')state.measurements.push(copy(r.data));
  }
+ if(trainingSeen){delete state.profile.training;if(training)state.profile.training=training;}
  state.measurements.sort((a,b)=>a.date.localeCompare(b.date));
  if(!validateBackup(state))throw Error('Invalid cloud snapshot.');
  return state;

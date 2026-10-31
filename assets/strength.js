@@ -21,7 +21,7 @@ function historySuggestion(ex,prior,index,workingCount){
  if(!completed.length)return null;
  const row=usable(ex,work[index])?work[index]:null;
  const kg=Number((row||completed[0]).kg);
- const reps=row?Math.max(ex.min,Math.min(ex.max,Number(row.reps))):ex.min;
+ const reps=row?Number(row.reps):ex.min;
  const result={kg,reps,source:'From your completed session',date:prior.date};
  const easy=ex.loadType==='cardio'||ex.muscle==='Mobility';
  if(easy)return {...result,note:'Repeat a comfortable duration or movement. Recovery work does not need automatic increases.'};

@@ -12,7 +12,7 @@ let env;
 before(async()=>{env=await initializeTestEnvironment({projectId:'demo-ironpath',firestore:{host:'127.0.0.1',port:8086,rules}});});
 beforeEach(async()=>env.clearFirestore());
 after(async()=>env?.cleanup());
-const ref=(uid=owner,identity=owner,id='profile')=>doc((identity?env.authenticatedContext(identity):env.unauthenticatedContext()).firestore(),`users/${uid}/records/${id}`);
+const ref=(uid=owner,identity=owner,id='profile')=>doc((identity?env.authenticatedContext(identity):env.unauthenticatedContext()).firestore(),id==='training'?`users/${uid}/settings/training`:`users/${uid}/records/${id}`);
 test('owner can create, read and list own valid records',async()=>{
  await assertSucceeds(setDoc(ref(),profile()));await assertSucceeds(getDoc(ref()));
  await assertSucceeds(getDocs(collection(env.authenticatedContext(owner).firestore(),`users/${owner}/records`)));
@@ -65,11 +65,24 @@ test('supported legacy backup fixtures produce writable canonical cloud records'
   for(const [id,record] of Object.entries(stateToRecords(backup)))await assertSucceeds(setDoc(ref(owner,owner,id),{...record,revision:1,mutationId:'legacy-import',updatedAt:serverTimestamp()}));
  }
 });
-test('private training settings are accepted while malformed nested calibrations are denied',async()=>{
- const value=profile();value.data.training={mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'2026-10-25'},squat:{kg:100,reps:5,sets:4,date:'2026-10-25'},deadlift:{kg:100,reps:5,sets:4,date:'2026-10-25'}}};
- await assertSucceeds(setDoc(ref(),value));
- await assertSucceeds(setDoc(ref(),{...value,revision:2,mutationId:'updated-calibration'}));
+test('private training settings use a separate owner-only path and reject malformed nested data',async()=>{
+ const data=structuredClone(state);data.profile.training={mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'2026-10-25'},squat:{kg:100,reps:5,sets:4,date:'2026-10-25'},deadlift:{kg:100,reps:5,sets:4,date:'2026-10-25'}}};
+ const record=stateToRecords(data).training,value={...record,revision:1,mutationId:'training-settings',updatedAt:serverTimestamp()};
+ await assertSucceeds(setDoc(ref(),profile()));
+ await assertSucceeds(setDoc(ref(owner,owner,'training'),value));
+ await assertSucceeds(setDoc(ref(owner,owner,'training'),{...value,revision:2,mutationId:'updated-calibration'}));
  const invalids=[{mode:'other',baselines:{}},{mode:'experienced',baselines:{unknown:{kg:80,reps:5,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:0,reps:5,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:1,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:21,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'bad-date'}}}];
- for(const training of invalids)await assertFails(setDoc(ref(),{...value,revision:3,mutationId:'invalid-calibration',data:{...value.data,training}}));
- await assertSucceeds(setDoc(ref(),{...profile(),revision:3,mutationId:'legacy-profile'}));
+ for(const training of invalids)await assertFails(setDoc(ref(owner,owner,'training'),{...value,revision:3,mutationId:'invalid-calibration',data:training}));
+ await assertSucceeds(setDoc(ref(),{...profile(),revision:2,mutationId:'legacy-profile-edit'}));
+ const db=env.authenticatedContext(owner).firestore();
+ await assertFails(setDoc(doc(db,`users/${owner}/records/training`),value));
+ await assertFails(setDoc(ref(),{...profile(),revision:3,data:{...profile().data,training:data.profile.training}}));
+ await assertFails(getDoc(ref(owner,null,'training')));await assertFails(getDoc(ref(owner,'other-user','training')));
+ await assertFails(setDoc(ref('other-user','other-user','training'),value));
+});
+test('impossible calibration dates cannot create an unreadable private-settings snapshot',async()=>{
+ const data=structuredClone(state);data.profile.training={mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'2024-02-29'}}};
+ const record=stateToRecords(data).training,value={...record,revision:1,mutationId:'calendar-check',updatedAt:serverTimestamp()};
+ for(const date of ['2026-13-40','2026-02-30','2025-02-29'])await assertFails(setDoc(ref(owner,owner,'training'),{...value,data:{...value.data,baselines:{bench:{...value.data.baselines.bench,date}}}}));
+ await assertSucceeds(setDoc(ref(owner,owner,'training'),value));
 });

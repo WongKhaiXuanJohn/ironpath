@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {recommendSet} from '../assets/tracking.js';
 import {programme} from '../assets/programme.js';
 import {validateBackup} from '../assets/core.js';
-import {stateToRecords,recordsToState} from '../assets/cloud-records.js';
+import {stateToRecords,recordsToState,RecordStore} from '../assets/cloud-records.js';
+import {stateToRecords as baseStateToRecords,recordsToState as baseRecordsToState} from './fixtures/base-cloud-records.mjs';
 
 const initial=()=>({version:1,profile:{age:'',height:171,weight:78,sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'},sessions:{},measurements:[],nutrition:{}});
 const bench=programme[0].exercises[0],squat=programme[1].exercises[0],deadlift=programme[1].exercises[2];
@@ -74,11 +75,37 @@ test('private training settings round-trip with backups and cloud records while 
  const data=initial();assert.equal(validateBackup(data),true);data.profile.training=training;
  assert.equal(validateBackup(data),true);assert.deepEqual(recordsToState(stateToRecords(data),initial),data);
  const strings=structuredClone(data);strings.profile.training.baselines.bench.kg='80';
- assert.equal(stateToRecords(strings).profile.data.training.baselines.bench.kg,80);
+ assert.equal(stateToRecords(strings).training.data.baselines.bench.kg,80);
 });
 test('invalid nested calibration values and unknown keys are rejected even with a blank profile age',()=>{
  const data=initial();
  for(const value of [null,{mode:'other',baselines:{}},{...experienced,extra:true},{mode:'experienced',baselines:{invented:baseline()}},{mode:'experienced',baselines:{bench:{...baseline(),kg:0}}},{mode:'experienced',baselines:{bench:{...baseline(),reps:1}}},{mode:'experienced',baselines:{bench:{...baseline(),sets:21}}},{mode:'experienced',baselines:{bench:{...baseline(),date:'2026-02-30'}}},{mode:'experienced',baselines:{bench:{kg:80}}}]){
   assert.equal(validateBackup({...data,profile:{...data.profile,training:value}}),false,JSON.stringify(value));
  }
+});
+test('below-range mixed, incomplete and changed-count sessions preserve actual reps when progression is suppressed',()=>{
+ const mixed=[set(4,60),set(4,50),set(4,50)];
+ assert.deepEqual(mixed.map((_,i)=>suggestion(mixed,i).reps),[4,4,4]);
+ assert.equal(suggestion([set(4),set(4,60,false)]).reps,4);
+ assert.equal(suggestion([set(4),set(4),set(4)],0,4).reps,4);
+});
+test('training has an independent cloud record so the actual base-version client can keep saving',()=>{
+ const data=initial();data.profile.training=structuredClone(training);
+ const records=stateToRecords(data);
+ assert.ok(records.training);assert.equal(records.profile.data.training,undefined);
+ const visibleToOld=Object.fromEntries(Object.entries(records).filter(([id])=>id!=='training'));
+ const oldClient=baseRecordsToState(visibleToOld,initial);oldClient.nutrition['2026-10-30']={calories:2000,protein:150,fat:65,carbs:210};
+ const oldWrite=baseStateToRecords(oldClient);
+ const recovered=recordsToState({...oldWrite,training:records.training},initial);
+ assert.deepEqual(recovered.profile.training,training);assert.equal(recovered.nutrition['2026-10-30'].protein,150);
+});
+test('training and nutrition-profile saves keep independent pending revisions',()=>{
+ const store=new RecordStore({storage:{getItem:()=>null,setItem:()=>{}},key:'synthetic',initial});
+ store.receive(Object.fromEntries(Object.entries(stateToRecords(initial())).map(([id,r])=>[id,{...r,revision:1,mutationId:'initial'}])));
+ let view=store.view(),next=structuredClone(view.state);next.profile.training=structuredClone(training);store.edit(next,view);
+ assert.deepEqual(store.pending().map(m=>m.id),['training']);
+ const m=store.begin('training');store.ack(m,{...m.record,revision:1,mutationId:m.mutationId});
+ view=store.view();next=structuredClone(view.state);next.profile.weight=81;store.edit(next,view);
+ assert.deepEqual(store.pending().map(m=>m.id),['profile']);assert.equal(store.pending()[0].record.data.training,undefined);
+ assert.deepEqual(store.view().state.profile.training,training);
 });

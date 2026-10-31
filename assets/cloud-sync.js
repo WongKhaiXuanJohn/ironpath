@@ -4,7 +4,7 @@ import {createFirebaseTransport} from './cloud-transport.js?v=20261031c';
 import {validateBackup} from './core.js?v=20261031c';
 const copy=value=>JSON.parse(JSON.stringify(value));
 const checkBackup=state=>{if(!validateBackup(state))throw Error('Invalid records. Keep your original backup.');};
-const recordCount=state=>1+Object.values(state.sessions).reduce((n,days)=>n+Object.keys(days).length,0)+Object.keys(state.nutrition).length+state.measurements.length;
+const recordCount=state=>1+(state.profile.training?1:0)+Object.values(state.sessions).reduce((n,days)=>n+Object.keys(days).length,0)+Object.keys(state.nutrition).length+state.measurements.length;
 
 export function createCloudSync({initial,guestKey,onChange=()=>{},storage=globalThis.localStorage,transport=createFirebaseTransport(firebaseConfig),ownerUid=configuredOwner,isOnline=()=>globalThis.navigator?.onLine!==false,initializationTimeoutMs=10000}){
  let guest=initial(),guestError='',user=null,store=null,unsubscribe=null,epoch=0,mode='device',error='',hasServer=false,running=false,initializing=false,connected=false,initializationId=0;

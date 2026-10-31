@@ -6,7 +6,7 @@ Replace novice-only fallback suggestions for experienced lifters with their own 
 
 ## Chosen approach
 
-The user selected **private strength settings plus adaptive recommendations**. The user also requested explicit starting-weight recommendations for unfamiliar exercises. Provide clearly labelled experienced-lifter trial guides; scaling every accessory from a compound lift is not a validated personal prescription. Continue using the existing static JavaScript application and private Firestore profile, without a new service or dependency.
+The user selected **private strength settings plus adaptive recommendations**. The user also requested explicit starting-weight recommendations for unfamiliar exercises. Provide clearly labelled experienced-lifter trial guides; scaling every accessory from a compound lift is not a validated personal prescription. Continue using the existing static JavaScript application and private Firestore account, without a new service or dependency.
 
 ## Behaviour
 
@@ -27,7 +27,7 @@ Use modest explicit ranges for each loaded exercise, with equipment rounding and
 
 ## Data and security
 
-Add an optional, strictly validated training-settings object to the existing profile schema. Old profiles/backups with no training object remain valid and retain current behaviour. Extend canonical conversion and owner-only Firestore field validation together. Numeric limits, supported lift IDs, ISO dates and safe defaults are validated before saving. Nutrition-form saves must preserve training settings. Existing documents are not overwritten or migrated automatically by deployment.
+Add an optional, strictly validated training-settings object to the existing profile schema. Old profiles/backups with no training object remain valid and retain current behaviour. Canonical conversion stores training separately at `users/{uid}/settings/training` with an independent revision. The legacy profile/records collection keeps its original schema so older clients remain compatible. Account initialization waits for both initial server snapshots. Extend owner-only Firestore validation for the separate document, including valid calendar dates. Numeric limits, supported lift IDs, ISO dates and safe defaults are validated before saving. Nutrition-form saves must preserve training settings. Existing documents are not overwritten or migrated automatically by deployment.
 
 ## Scientific basis and limits
 
