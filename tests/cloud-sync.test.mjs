@@ -51,6 +51,16 @@ test('storage failure retains unsaved values for display and export without clai
  const transport=fakeTransport(),storage=memory(),s=make({transport,storage});await s.ready;const view=s.view(),next=structuredClone(view.state);next.profile.weight=84;
  storage.setItem=()=>{throw Error('Storage full');};assert.throws(()=>s.save(next,view));assert.equal(s.view().state.profile.weight,84);assert.equal(s.summary().unsaved,true);assert.equal(transport.writes.length,0);
 });
+for(const remoteUpdate of [false,true])test(`a later save retains earlier storage-failed changes (remote update: ${remoteUpdate})`,async()=>{
+ const storage=memory(),transport=fakeTransport({uid:'owner'}),s=make({storage,transport,isOnline:()=>false});
+ transport.data.owner=Object.fromEntries(Object.entries(stateToRecords(initial())).map(([id,r])=>[id,{...r,revision:1,mutationId:'initial'}]));
+ await s.ready;await settle();const durable=storage.setItem,first=s.view(),next=structuredClone(first.state);next.profile.weight=84;
+ storage.setItem=()=>{throw Error('Storage full');};assert.throws(()=>s.save(next,first));storage.setItem=durable;
+ if(remoteUpdate){transport.data.owner.profile={...transport.data.owner.profile,data:{...initial().profile,weight:79},revision:2,mutationId:'other-device'};s.retry();await settle();}
+ const shown=s.view(),later=structuredClone(shown.state);later.nutrition['2026-10-30']={calories:2200,protein:160,fat:70,carbs:220};s.save(later,shown);
+ assert.equal(s.view().state.profile.weight,84);assert.equal(s.summary().pendingCount,2);assert.equal(s.summary().unsaved,false);
+ assert.equal(s.summary().conflictCount,remoteUpdate?1:0);
+});
 test('retrying an unapproved account does not duplicate authentication listeners',async()=>{
  const transport=fakeTransport({uid:'other'}),s=make({transport});await s.ready;s.retry();await settle();assert.equal(transport.initCalls,1);
 });
@@ -60,4 +70,25 @@ test('stalled startup releases device saving and ignores a late authentication c
  const s=make({transport,initializationTimeoutMs:20});await s.ready;
  assert.equal(s.summary().readOnly,false);const view=s.view(),next=structuredClone(view.state);next.profile.weight=85;s.save(next,view);
  auth({uid:'owner'});await settle();assert.equal(s.summary().user,null);assert.equal(s.view().state.profile.weight,85);
+});
+for(const signedIn of [false,true])test(`backup consent cannot switch destination after auth changes (initial account: ${signedIn})`,async()=>{
+ const transport=fakeTransport(signedIn?{uid:'owner'}:null),s=make({transport});await s.ready;await settle();
+ const destination=s.destination(),backup=initial();backup.profile.weight=86;
+ if(signedIn)await s.signOut();else await s.signIn();await settle();
+ assert.throws(()=>s.importBackup(backup,destination),/account changed/i);
+ assert.equal(s.view().state.profile.weight,78);assert.equal(transport.writes.length,0);
+});
+test('device migration consent expires even when the same owner signs out and back in',async()=>{
+ const transport=fakeTransport({uid:'owner'}),s=make({transport});await s.ready;await settle();const destination=s.destination();
+ await s.signOut();await s.signIn();await settle();assert.throws(()=>s.migrate(undefined,destination),/account changed/i);assert.equal(transport.writes.length,0);
+});
+test('migration preview counts additions before any upload and keeps existing dates',async()=>{
+ const transport=fakeTransport({uid:'owner'}),storage=memory(),guest=initial();guest.measurements=[{date:'2026-10-30',weight:80},{date:'2026-10-29',weight:81}];storage.setItem('guest',JSON.stringify(guest));
+ const existing=initial();existing.measurements=[{date:'2026-10-30',weight:79}];transport.data.owner=Object.fromEntries(Object.entries(stateToRecords(existing)).map(([id,r])=>[id,{...r,revision:1,mutationId:'existing'}]));
+ const s=make({transport,storage});await s.ready;await settle();assert.deepEqual(s.migrationPreview(),{added:1,skipped:2});assert.equal(transport.writes.length,0);
+});
+test('valid device backups with unsupported cloud fields remain available until explicit migration',async()=>{
+ const storage=memory(),backup=initial();backup.profile.legacyNote='Preserve in original backup';storage.setItem('guest',JSON.stringify(backup));
+ const transport=fakeTransport(),s=make({transport,storage});await s.ready;assert.equal(s.view().state.profile.legacyNote,'Preserve in original backup');
+ await s.signIn();await settle();assert.throws(()=>s.migrate(),/unsupported cloud fields/);assert.equal(transport.writes.length,0);await s.signOut();assert.equal(s.view().state.profile.legacyNote,'Preserve in original backup');
 });

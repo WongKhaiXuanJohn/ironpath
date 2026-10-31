@@ -5,6 +5,28 @@ const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const stable=value=>JSON.stringify(value,(_,v)=>plain(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 const same=(a,b)=>stable(a)===stable(b);
 const content=r=>r?{kind:r.kind,date:r.date,day:r.day,data:r.data,deleted:r.deleted}:null;
+const profileKeys=['age','height','weight','sex','activity','goal','scoops','calorieOverride','start'];
+const measurementKeys=['date','weight','waist','bodyfat','muscle','bodyProtein','proteinMass','metabolism','fatMass','bodyWater','bmi','ecw','inbodyScore','visceralFat','waistHip'];
+function canonicalState(state){
+ if(!validateBackup(state))throw Error('Invalid records. Export a valid backup before trying again.');
+ const next=copy(state),supported=(value,keys)=>{
+  if(Object.keys(value).some(key=>!keys.includes(key)))throw Error('This backup contains unsupported cloud fields. Keep the original backup.');
+ };
+ const p=next.profile;supported(p,profileKeys);
+ const defaults={sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'};
+ for(const [key,value]of Object.entries(defaults))if(p[key]===undefined||key==='calorieOverride'&&p[key]===null)p[key]=value;
+ for(const key of ['age','height','weight','activity','scoops','calorieOverride'])if(p[key]!=='')p[key]=Number(p[key]);
+ if(!['male','female'].includes(p.sex)||![1.2,1.375,1.55,1.725].includes(p.activity)||!['cut','maintain','gain'].includes(p.goal)||!Number.isFinite(p.scoops)||p.scoops<0||p.scoops>10||p.calorieOverride!==''&&(!Number.isFinite(p.calorieOverride)||p.calorieOverride<1200||p.calorieOverride>6000))throw Error('This profile contains unsupported cloud values. Check your profile before uploading.');
+ for(const days of Object.values(next.sessions))for(const session of Object.values(days)){
+  supported(session,['complete','exercises']);
+  if(Object.keys(session.exercises).length>40)throw Error('Cloud workouts support up to 40 exercises per session. Keep the original backup.');
+  for(const sets of Object.values(session.exercises))for(const set of sets)for(const key of ['kg','reps','rir'])if(set[key]!==undefined)set[key]=Number(set[key]);
+ }
+ for(const reading of next.measurements){supported(reading,measurementKeys);for(const key of Object.keys(reading))if(key!=='date'&&reading[key]!=='')reading[key]=Number(reading[key]);}
+ for(const totals of Object.values(next.nutrition)){supported(totals,['calories','protein','fat','carbs']);for(const key of Object.keys(totals))totals[key]=Number(totals[key]);}
+ if(!validateBackup(next))throw Error('This backup contains unsupported cloud values. Keep the original backup.');
+ return next;
+}
 function metadata(id){
  if(id==='profile')return {kind:'profile',date:'',day:-1};
  const match=/^(session|nutrition|measurement)_(\d{4}-\d{2}-\d{2})(?:_([0-6]))?$/.exec(id);
@@ -13,7 +35,7 @@ function metadata(id){
 }
 const record=(id,data,deleted=false)=>({schema:1,...metadata(id),data:deleted?null:copy(data),deleted,revision:0,mutationId:''});
 export function stateToRecords(state){
- if(!validateBackup(state))throw Error('Invalid records. Export a valid backup before trying again.');
+ state=canonicalState(state);
  const records={profile:record('profile',state.profile)};
  for(const [date,days]of Object.entries(state.sessions))for(const [day,value]of Object.entries(days)){const id=`session_${date}_${day}`;records[id]=record(id,value);}
  for(const [date,value]of Object.entries(state.nutrition)){const id=`nutrition_${date}`;records[id]=record(id,value);}
@@ -73,7 +95,8 @@ export class RecordStore{
   for(const id of new Set([...Object.keys(before),...Object.keys(after)])){
    if(same(content(before[id]),content(after[id])))continue;
    const desired=after[id]||record(id,null,true),current=value.remote[id],old=value.pending[id];
-   if(same(content(desired),content(current))){delete value.pending[id];delete value.conflicts[id];continue;}
+   const writingDifferent=this.inFlight[id]&&!same(content(this.inFlight[id].record),content(desired));
+   if(same(content(desired),content(current))&&!writingDifferent){delete value.pending[id];delete value.conflicts[id];continue;}
    const baseRevision=old?old.baseRevision:(same(content(before[id]),content(current))?(current?.revision||0):(view.versions[id]||0));
    value.pending[id]={id,record:desired,baseRevision,mutationId:this.uuid()};
    if((current?.revision||0)!==baseRevision)value.conflicts[id]=true;
@@ -87,7 +110,8 @@ export class RecordStore{
   for(const r of Object.values(value.remote))delete r.updatedAt;
   for(const [id,m]of Object.entries(value.pending)){
    const remote=value.remote[id];
-   if(remote&&(remote.mutationId===m.mutationId||same(content(remote),content(m.record)))){delete value.pending[id];delete value.conflicts[id];}
+   const writingDifferent=this.inFlight[id]&&!same(content(this.inFlight[id].record),content(m.record));
+   if(remote&&(remote.mutationId===m.mutationId||same(content(remote),content(m.record))&&!writingDifferent)){delete value.pending[id];delete value.conflicts[id];}
    else if(remote&&this.inFlight[id]?.mutationId===remote.mutationId){m.baseRevision=remote.revision;delete value.conflicts[id];}
    else if((remote?.revision||0)!==m.baseRevision)value.conflicts[id]=true;
   }

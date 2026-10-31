@@ -30,8 +30,10 @@ export function bindCloudPanel(sync,{notify,hasDraft,onRefresh}){
    if(action==='signout')await sync.signOut();
    if(action==='retry')sync.retry();
    if(action==='migrate'){
+    const destination=sync.destination(),preview=sync.migrationPreview();
     const dialog=document.querySelector('#cloud-dialog');dialog.returnValue='';
-    dialog.onclose=()=>{if(dialog.returnValue!=='upload')return;try{const result=sync.migrate();onRefresh();notify(`${result.added} records queued for cloud saving. ${result.skipped} existing records kept.`);}catch(e){notify(e.message);}};
+    dialog.querySelector('[data-migration-preview]').textContent=`${preview.added} records to add · ${preview.skipped} existing records to keep.`;
+    dialog.onclose=()=>{if(dialog.returnValue!=='upload')return;try{const result=sync.migrate(undefined,destination);onRefresh();notify(`${result.added} records queued for cloud saving. ${result.skipped} existing records kept.`);}catch(e){notify(e.message);}};
     dialog.showModal();
    }
   }catch(e){notify(e.code==='auth/popup-blocked'?'Allow the Google sign-in pop-up for Ironpath, then try again.':e.code==='auth/popup-closed-by-user'?'Sign-in closed. Your records are still saved on this device.':e.message||'Could not connect. Your device records have been kept.');}

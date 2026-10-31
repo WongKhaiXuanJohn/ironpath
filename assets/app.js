@@ -1,9 +1,10 @@
 import {calculateNutrition,nextLoad,programmeWeek,weeklyAverage,validateBackup,validDate} from './core.js?v=20261030d';
 import {programme,volumes,phases,programmeForSession} from './programme.js?v=20261030d';
 import {measurementFields,recommendSet,previousExercise} from './tracking.js?v=20261030d';
-import {progressView} from './progress-ui.js?v=20261030d';
+import {progressView} from './progress-ui.js?v=20261031b';
 import {createCloudSync} from './cloud-sync.js?v=20261031a';
 import {cloudPanel,cloudStatus,bindCloudPanel} from './cloud-ui.js?v=20261031a';
+import {captureMeasurementDraft,measurementBaseline} from './measurement-draft.js?v=20261031a';
 
 const $=s=>document.querySelector(s);
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -40,9 +41,9 @@ function cloudChanged(){
  else if(!saving&&!editing())render();else updateCloudUI();
 }
 cloud=createCloudSync({initial,guestKey:KEY,onChange:cloudChanged});cloudView=cloud.view();state=cloudView.state;
-function persist(){
+function persist(baseline=cloudView){
  saving=true;
- try{cloud.save(state,cloudView);cloudView={state:JSON.parse(JSON.stringify(state)),versions:cloudView.versions};updateCloudUI();return true;}
+ try{cloud.save(state,baseline);cloudView={state:JSON.parse(JSON.stringify(state)),versions:cloudView.versions};updateCloudUI();return true;}
  catch(error){$('.local-badge').textContent='Not saved · export a backup';notify(error.message||'Device storage is unavailable or full. Export your data to keep this session.');return false;}
  finally{saving=false;}
 }
@@ -160,7 +161,7 @@ function bind(view){
  if(view==='progress')bindProgress();
 }
 function bindProgress(){
- document.querySelectorAll('#measurement-form input[type="number"]').forEach(input=>input.oninput=()=>{measurementDraft={date:measurementDate,...Object.fromEntries(new FormData($('#measurement-form')))};});
+ document.querySelectorAll('#measurement-form input:not([type="date"])').forEach(input=>input.oninput=()=>{measurementDraft=captureMeasurementDraft(measurementDate,Object.fromEntries(new FormData($('#measurement-form'))),cloudView,measurementDraft);});
  $('#measurement-date').onchange=e=>{if(validDate(e.target.value)&&e.target.value<=today){measurementDate=e.target.value;render();}};
  document.querySelectorAll('[data-check-date]').forEach(b=>b.onclick=()=>{measurementDate=b.dataset.checkDate;render();$('#measurement-form').scrollIntoView({block:'start',behavior:'smooth'});});
  $('#trend-metric').onchange=e=>{trendMetric=e.target.value;render();};
@@ -180,11 +181,12 @@ function bindProgress(){
   }
   const next={...state,profile:p,measurements:state.measurements.filter(x=>x.date!==r.date).concat(r)};
   if(!validateBackup(next)){$('#measurement-error').textContent='Please check the reading values and units.';return;}
-  delete e.target.dataset.dirty;state=next;measurementDraft=null;
+  const baseline=measurementBaseline(cloudView,measurementDraft?.date===measurementDate?measurementDraft:null,f.has('updateProfile'));
+  state=next;
   if(r[trendMetric]===''||r[trendMetric]===undefined)trendMetric=measurementFields.find(field=>r[field.key]!==''&&r[field.key]!==undefined).key;
   if(r.date<trendFrom){trendFrom=r.date;trendRange='custom';}
   if(r.date>trendTo){trendTo=r.date;trendRange='custom';}
-  if(!persist())return;render();notify('Check-in saved for '+dateText(measurementDate)+'.');
+  if(!persist(baseline))return;delete e.target.dataset.dirty;measurementDraft=null;render();notify('Check-in saved for '+dateText(measurementDate)+'.');
  };
 }
 function updateSessionProgress(){
@@ -251,7 +253,7 @@ function bindProfile(){
  form.onsubmit=e=>{e.preventDefault();const p=readProfile(form);try{calculateNutrition(p);if(!validDate(p.start))throw Error('Choose a valid programme start date.');delete form.dataset.dirty;state.profile=p;if(!persist())return;render();notify('Profile saved. Nutrition targets updated.');}catch(err){$('#profile-error').textContent=err.message;}};
  $('#export-data').onclick=()=>{const blob=new Blob([JSON.stringify(cloud.view().state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`ironpath-backup-${today}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Backup exported. Keep it somewhere private.');};
  $('#import-label').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#import-data').click();}};
- $('#import-data').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5_000_000)throw Error('Backup is too large. Choose an Ironpath JSON backup under 5 MB.');const data=JSON.parse(await file.text());if(!validateBackup(data))throw Error('This is not a valid Ironpath backup. Your current data has not changed.');const dialog=$('#confirm-dialog');dialog.returnValue='';const isCloud=cloud.summary().mode==='account';dialog.querySelector('h2').textContent=isCloud?'Import into your private account?':'Replace this device’s data?';dialog.querySelector('p').textContent=isCloud?'This uploads the backup’s profile, workouts, nutrition and body-composition records to your Ironpath Firebase account. Existing cloud dates are kept; unrelated records are not removed.':'Your current profile, workout logs and check-ins will be replaced by the selected backup. Export your current data first to keep it.';dialog.onclose=()=>{if(dialog.returnValue==='restore'){try{const result=cloud.importBackup(data);render();notify(cloud.summary().mode==='account'?`${result.added} imported; ${result.skipped} existing records kept.`:'Backup restored.');}catch(error){notify(error.message);}}};dialog.showModal();}catch(err){$('#backup-error').textContent=err.message;}e.target.value='';};
+ $('#import-data').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5_000_000)throw Error('Backup is too large. Choose an Ironpath JSON backup under 5 MB.');const data=JSON.parse(await file.text());if(!validateBackup(data))throw Error('This is not a valid Ironpath backup. Your current data has not changed.');const dialog=$('#confirm-dialog');dialog.returnValue='';const destination=cloud.destination(),isCloud=cloud.summary().mode==='account';dialog.querySelector('h2').textContent=isCloud?'Import into your private account?':'Replace this device’s data?';dialog.querySelector('p').textContent=isCloud?'This uploads the backup’s profile, workouts, nutrition and body-composition records to your Ironpath Firebase account. Existing cloud dates are kept; unrelated records are not removed.':'Your current profile, workout logs and check-ins will be replaced by the selected backup. Export your current data first to keep it.';dialog.onclose=()=>{if(dialog.returnValue==='restore'){try{const result=cloud.importBackup(data,destination);render();notify(cloud.summary().mode==='account'?`${result.added} imported; ${result.skipped} existing records kept.`:'Backup restored.');}catch(error){notify(error.message);}}};dialog.showModal();}catch(err){$('#backup-error').textContent=err.message;}e.target.value='';};
 }
 function refreshCalendar(){
  const now=localDate();if(now===today)return;

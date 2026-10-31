@@ -1,16 +1,19 @@
 import {RecordStore,stateToRecords} from './cloud-records.js?v=20261031a';
 import {firebaseConfig,ownerUid as configuredOwner} from './firebase-config.js?v=20261031a';
 import {createFirebaseTransport} from './cloud-transport.js?v=20261031a';
+import {validateBackup} from './core.js?v=20261030d';
 const copy=value=>JSON.parse(JSON.stringify(value));
+const checkBackup=state=>{if(!validateBackup(state))throw Error('Invalid records. Keep your original backup.');};
+const recordCount=state=>1+Object.values(state.sessions).reduce((n,days)=>n+Object.keys(days).length,0)+Object.keys(state.nutrition).length+state.measurements.length;
 
 export function createCloudSync({initial,guestKey,onChange=()=>{},storage=globalThis.localStorage,transport=createFirebaseTransport(firebaseConfig),ownerUid=configuredOwner,isOnline=()=>globalThis.navigator?.onLine!==false,initializationTimeoutMs=10000}){
  let guest=initial(),guestError='',user=null,store=null,unsubscribe=null,epoch=0,mode='device',error='',hasServer=false,running=false,initializing=false,connected=false,initializationId=0;
- try{const saved=storage.getItem(guestKey);if(saved){guest=JSON.parse(saved);stateToRecords(guest);}}catch{guest=initial();guestError='Device records could not be read. Keep your backup.';}
+ try{const saved=storage.getItem(guestKey);if(saved){guest=JSON.parse(saved);checkBackup(guest);}}catch{guest=initial();guestError='Device records could not be read. Keep your backup.';}
  const emit=()=>onChange();
  const account=()=>user&&ownerUid&&user.uid===ownerUid&&store;
  const unsaved=new Map(),cacheKey=()=>account()?`account:${user.uid}`:'device';
- const summary=()=>({mode,user:user?{...user}:null,...(account()?store.status():{pendingCount:0,conflictCount:0,lastSynced:null}),unsaved:unsaved.has(cacheKey()),error:error||guestError,online:isOnline(),hasServer,readOnly:initializing||Boolean(account()&&!hasServer&&!Object.keys(store.value.remote).length&&!store.status().pendingCount),conflicts:account()?Object.keys(store.value.conflicts).map(id=>({id,local:store.value.pending[id]?.record,remote:store.value.remote[id]})):[],guestCount:Object.keys(stateToRecords(guest)).length});
- const view=()=>unsaved.has(cacheKey())?copy(unsaved.get(cacheKey())):account()?store.view():{state:copy(guest),versions:{}};
+ const summary=()=>({mode,user:user?{...user}:null,...(account()?store.status():{pendingCount:0,conflictCount:0,lastSynced:null}),unsaved:unsaved.has(cacheKey()),error:error||guestError,online:isOnline(),hasServer,readOnly:initializing||Boolean(account()&&!hasServer&&!Object.keys(store.value.remote).length&&!store.status().pendingCount),conflicts:account()?Object.keys(store.value.conflicts).map(id=>({id,local:store.value.pending[id]?.record,remote:store.value.remote[id]})):[],guestCount:recordCount(guest)});
+ const view=()=>{const retained=unsaved.get(cacheKey());return retained?copy({state:retained.state,versions:retained.versions}):account()?store.view():{state:copy(guest),versions:{}};};
  async function drain(){
   if(running||!account()||!hasServer||!isOnline()||error)return;
   const generation=epoch,activeStore=store,uid=user.uid;running=true;
@@ -61,25 +64,37 @@ export function createCloudSync({initial,guestKey,onChange=()=>{},storage=global
   }finally{clearTimeout(timer);}
  }
  const ready=Promise.resolve().then(initialize);
+ const destination=()=>`${epoch}:${mode}:${user?.uid||''}`;
+ const confirmDestination=expected=>{if(expected!==destination())throw Error('Your account changed. Review the destination and confirm again.');};
  const api={ready,view,summary,
+  destination,
   save(next,baseline){
-   stateToRecords(next);
+   checkBackup(next);
+   const durableBaseline=unsaved.get(cacheKey())?.baseline||baseline;
    try{
     if(summary().readOnly)throw Error('Wait for your account records to load before editing.');
-    if(account())store.edit(next,baseline);
+    if(account())store.edit(next,durableBaseline);
     else{storage.setItem(guestKey,JSON.stringify(next));guest=copy(next);guestError='';}
     unsaved.delete(cacheKey());emit();void drain();return true;
-   }catch(failure){unsaved.set(cacheKey(),{state:copy(next),versions:copy(baseline.versions)});emit();throw failure;}
+   }catch(failure){unsaved.set(cacheKey(),{state:copy(next),versions:copy(durableBaseline.versions),baseline:copy(durableBaseline)});emit();throw failure;}
   },
   async signIn(){await ready;if(!connected)await initialize();if(!connected)throw Error('Could not connect to Google sign-in. Please retry when connected.');await transport.signIn();},
   async signOut(){await transport.signOut();},
-  migrate(source=guest){
+  migrationPreview(source=guest){
+   if(!account()||!hasServer)throw Error('Connect to your approved account before importing.');
+   const records=stateToRecords(source),existing=store.effective();let added=0,skipped=0;
+   for(const id of Object.keys(records))existing[id]?skipped++:added++;
+   return {added,skipped};
+  },
+  migrate(source=guest,expected=destination()){
+   confirmDestination(expected);
    if(!account()||!hasServer)throw Error('Sign in to the approved account and connect before importing records.');
    stateToRecords(source);const result=store.mergeGuest(source);emit();void drain();return result;
   },
-  importBackup(source){
-   stateToRecords(source);if(account())return api.migrate(source);
-   api.save(source,view());return {added:Object.keys(stateToRecords(source)).length,skipped:0};
+  importBackup(source,expected=destination()){
+   confirmDestination(expected);
+   checkBackup(source);if(account())return api.migrate(source,expected);
+   api.save(source,view());return {added:recordCount(source),skipped:0};
   },
   resolve(id,choice){if(!account())return;store.resolve(id,choice);emit();void drain();},
   retry(){if(account()){error='';listen();void drain();}else if(connected)authenticated(user);else void initialize();},

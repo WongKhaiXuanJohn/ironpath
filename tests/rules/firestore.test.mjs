@@ -3,6 +3,7 @@ import {test,before,after,beforeEach} from 'node:test';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import {doc,setDoc,getDoc,getDocs,collection,deleteDoc,serverTimestamp,Timestamp} from 'firebase/firestore';
 import {stateToRecords} from '../../assets/cloud-records.js';
+import {legacyBackup,numericStringBackup} from '../fixtures/legacy-backup.mjs';
 const rules=await readFile(new URL('../../firestore.rules',import.meta.url),'utf8');
 const owner=rules.match(/request.auth.uid == '([^']+)'/)?.[1]||'owner-test';
 const state={version:1,profile:{age:'',height:171,weight:78,sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'},sessions:{},measurements:[],nutrition:{}};
@@ -56,5 +57,11 @@ test('full body readings, nutrition and the supported workout size are accepted'
   const first={...record,revision:1,mutationId:'full-record-test',updatedAt:serverTimestamp()};
   await assertSucceeds(setDoc(ref(owner,owner,id),first));
   await assertSucceeds(setDoc(ref(owner,owner,id),{...first,revision:2,mutationId:'updated-full-record-test',updatedAt:serverTimestamp()}));
+ }
+});
+test('supported legacy backup fixtures produce writable canonical cloud records',async()=>{
+ for(const backup of [legacyBackup,numericStringBackup]){
+  await env.clearFirestore();
+  for(const [id,record] of Object.entries(stateToRecords(backup)))await assertSucceeds(setDoc(ref(owner,owner,id),{...record,revision:1,mutationId:'legacy-import',updatedAt:serverTimestamp()}));
  }
 });

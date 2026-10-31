@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stateToRecords,recordsToState,RecordStore} from '../assets/cloud-records.js';
+import {legacyBackup,numericStringBackup} from './fixtures/legacy-backup.mjs';
 
 const initial=()=>({version:1,profile:{age:'',height:171,weight:78,sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'},sessions:{},measurements:[],nutrition:{}});
 const memory=()=>{const map=new Map();return {getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v)};};
@@ -67,4 +68,34 @@ test('an old acknowledgement cannot clear a newer remote conflict with an unsent
  const newer=initial();newer.profile.weight=79;s.receive(remote(newer,3,'newer-device'));assert.equal(s.status().conflictCount,1);
  s.ack(sent,{...sent.record,revision:2,mutationId:sent.mutationId});
  assert.equal(s.status().conflictCount,1);assert.equal(s.view().state.profile.weight,81);assert.equal(s.begin('profile'),null);
+});
+for(const listenerFirst of [true,false])test(`undo during an in-flight write remains queued (listener first: ${listenerFirst})`,()=>{
+ const s=store();s.receive(remote(initial()));change(s,d=>d.profile.weight=80);const sent=s.begin('profile');
+ change(s,d=>d.profile.weight=78);
+ s.receive(remote(initial()));assert.equal(s.status().pendingCount,1);
+ const saved={...sent.record,revision:2,mutationId:sent.mutationId};
+ if(listenerFirst)s.receive({profile:saved});s.ack(sent,saved);if(!listenerFirst)s.receive({profile:saved});
+ assert.equal(s.view().state.profile.weight,78);assert.equal(s.status().pendingCount,1);assert.equal(s.status().conflictCount,0);
+ const undo=s.begin('profile');assert.equal(undo.baseRevision,2);s.ack(undo,{...undo.record,revision:3,mutationId:undo.mutationId});
+ assert.equal(s.view().state.profile.weight,78);assert.equal(s.status().pendingCount,0);
+});
+test('deleting a newly created record while its write is in flight queues a tombstone',()=>{
+ const s=store();s.receive(remote(initial()));change(s,d=>d.measurements=[{date:'2026-10-30',weight:80}]);const sent=s.begin('measurement_2026-10-30');
+ change(s,d=>d.measurements=[]);s.receive(remote(initial()));
+ const saved={...sent.record,revision:1,mutationId:sent.mutationId};s.receive({...remote(initial()),[sent.id]:saved});s.ack(sent,saved);
+ assert.deepEqual(s.view().state.measurements,[]);assert.equal(s.begin(sent.id).record.deleted,true);assert.equal(s.begin(sent.id).baseRevision,1);
+});
+test('supported old backups normalize missing defaults and numeric strings without losing archived fields',()=>{
+ for(const backup of [legacyBackup,numericStringBackup]){
+  const before=structuredClone(backup),records=stateToRecords(backup);
+  assert.equal(records.profile.data.start,'2026-10-26');assert.equal(records.profile.data.calorieOverride,'');assert.equal(records.profile.data.weight,78);assert.equal(records.profile.data.age,30);assert.deepEqual(backup,before);
+ }
+ const records=stateToRecords(numericStringBackup);
+ assert.deepEqual(records['session_2026-10-30_4'].data.exercises.preacher[0],{type:'working',kg:10,reps:12,rir:2,form:true,done:true});
+ assert.equal(records['measurement_2026-10-30'].data.bodyProtein,12);
+});
+test('unsupported cloud values are rejected before any migration is queued',()=>{
+ const s=store(),before=s.view(),data=initial();data.sessions['2026-10-30']={0:{complete:false,exercises:Object.fromEntries(Array.from({length:41},(_,i)=>['exercise-'+i,[]]))}};
+ assert.throws(()=>s.mergeGuest(data),/cloud|supported/i);assert.equal(s.status().pendingCount,0);assert.deepEqual(s.view(),before);
+ assert.throws(()=>stateToRecords({...initial(),profile:{...initial().profile,unknown:'unsupported'}}),/cloud|supported/i);
 });
