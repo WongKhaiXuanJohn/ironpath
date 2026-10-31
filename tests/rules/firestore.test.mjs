@@ -65,3 +65,11 @@ test('supported legacy backup fixtures produce writable canonical cloud records'
   for(const [id,record] of Object.entries(stateToRecords(backup)))await assertSucceeds(setDoc(ref(owner,owner,id),{...record,revision:1,mutationId:'legacy-import',updatedAt:serverTimestamp()}));
  }
 });
+test('private training settings are accepted while malformed nested calibrations are denied',async()=>{
+ const value=profile();value.data.training={mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'2026-10-25'},squat:{kg:100,reps:5,sets:4,date:'2026-10-25'},deadlift:{kg:100,reps:5,sets:4,date:'2026-10-25'}}};
+ await assertSucceeds(setDoc(ref(),value));
+ await assertSucceeds(setDoc(ref(),{...value,revision:2,mutationId:'updated-calibration'}));
+ const invalids=[{mode:'other',baselines:{}},{mode:'experienced',baselines:{unknown:{kg:80,reps:5,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:0,reps:5,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:1,sets:4,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:21,date:'2026-10-25'}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4}}},{mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'bad-date'}}}];
+ for(const training of invalids)await assertFails(setDoc(ref(),{...value,revision:3,mutationId:'invalid-calibration',data:{...value.data,training}}));
+ await assertSucceeds(setDoc(ref(),{...profile(),revision:3,mutationId:'legacy-profile'}));
+});

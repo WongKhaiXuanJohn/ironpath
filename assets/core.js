@@ -23,10 +23,17 @@ export function nextLoad(exercise,sets){
 }
 export function programmeWeek(start,date){if(!validDate(start)||!validDate(date))throw Error('Invalid date');return Math.min(53,Math.max(0,Math.floor((Date.parse(date)-Date.parse(start))/604800000)+1));}
 export function weeklyAverage(records,date){const end=Date.parse(date),start=end-6*86400000;const recent=records.filter(r=>Date.parse(r.date)>=start&&Date.parse(r.date)<=end&&numeric(r.weight,35,250));return recent.length?recent.reduce((s,r)=>s+Number(r.weight),0)/recent.length:null;}
+export function validateTraining(value){
+ const map=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+ const keys=(v,allowed)=>Object.keys(v).every(k=>allowed.includes(k));
+ if(!map(value)||!keys(value,['mode','baselines'])||!['starter','experienced'].includes(value.mode)||!map(value.baselines)||!keys(value.baselines,['bench','squat','deadlift']))return false;
+ return Object.values(value.baselines).every(b=>map(b)&&keys(b,['kg','reps','sets','date'])&&Object.keys(b).length===4&&numeric(b.kg,1,1000)&&numeric(b.reps,3,12)&&Number.isInteger(Number(b.reps))&&numeric(b.sets,1,20)&&Number.isInteger(Number(b.sets))&&validDate(b.date));
+}
 export function validateBackup(b){
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>!['__proto__','prototype','constructor'].includes(k));
   if(!object(b)||b.version!==1||!object(b.profile)||!object(b.sessions)||!Array.isArray(b.measurements)||!object(b.nutrition))return false;
   const p=b.profile;
+  if(p.training!==undefined&&!validateTraining(p.training))return false;
   if(p.age!==''){try{calculateNutrition(p);}catch{return false;}}
   else if(!numeric(p.weight,35,250)||!numeric(p.height,120,230))return false;
   if(p.start!==undefined&&!validDate(p.start))return false;

@@ -1,4 +1,5 @@
 import {nextLoad,validDate} from './core.js?v=20261030d';
+import {experiencedRecommendation} from './strength.js?v=20261031c';
 export const measurementFields=[
  {key:'weight',label:'Body weight',unit:'kg',min:35,max:250,step:.1},
  {key:'bodyfat',label:'Percent body fat (PBF)',unit:'%',min:3,max:60,step:.1},
@@ -31,12 +32,13 @@ export function previousExercise(ex,sessions,date){
  for(const [d,days] of Object.entries(sessions).filter(([d])=>d<date).sort(([a],[b])=>b.localeCompare(a))){
   for(const s of Object.values(days)){
    const sets=s.exercises[ex.id];
-   if(sets?.some(s=>s.type==='working'&&s.done&&s.reps>0))return {date:d,sets};
+   if(sets?.some(s=>s.type==='working'&&s.done&&Number(s.reps)>0&&Number.isFinite(Number(s.kg))&&(ex.loadType==='kg'?Number(s.kg)>0:Number(s.kg)>=0)))return {date:d,sets};
   }
  }
  return null;
 }
-export function recommendSet(ex,sessions,date,index,type='working'){
+export function recommendSet(ex,sessions,date,index,type='working',training,workingCount){
+ if(training?.mode==='experienced')return experiencedRecommendation(ex,previousExercise(ex,sessions,date),date,index,type,training,workingCount);
  const prior=previousExercise(ex,sessions,date),work=prior?.sets.filter(s=>s.type==='working'&&s.done&&s.reps>0)||[];
  const row=work[Math.min(index,work.length-1)];
  const progression=prior?nextLoad(ex,prior.sets):null;

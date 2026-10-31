@@ -7,12 +7,25 @@ service cloud.firestore {
     function number(v,low,high) { return (v is int || v is float) && v >= low && v <= high; }
     function optional(d,k,low,high) { return !(k in d) || d[k] == '' || number(d[k],low,high); }
     function date(v) { return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'); }
+    function calibration(b) {
+      return b is map && b.keys().hasOnly(['kg','reps','sets','date']) && b.keys().hasAll(['kg','reps','sets','date'])
+        && number(b.kg,1,1000) && b.reps is int && b.reps >= 3 && b.reps <= 12
+        && b.sets is int && b.sets >= 1 && b.sets <= 20 && date(b.date);
+    }
+    function training(t) {
+      return t is map && t.keys().hasOnly(['mode','baselines']) && t.keys().hasAll(['mode','baselines'])
+        && t.mode in ['starter','experienced'] && t.baselines is map && t.baselines.keys().hasOnly(['bench','squat','deadlift'])
+        && (!('bench' in t.baselines) || calibration(t.baselines.bench))
+        && (!('squat' in t.baselines) || calibration(t.baselines.squat))
+        && (!('deadlift' in t.baselines) || calibration(t.baselines.deadlift));
+    }
     function profile(d) {
-      return d is map && d.keys().hasOnly(['age','height','weight','sex','activity','goal','scoops','calorieOverride','start'])
+      return d is map && d.keys().hasOnly(['age','height','weight','sex','activity','goal','scoops','calorieOverride','start','training'])
         && d.keys().hasAll(['age','height','weight','sex','activity','goal','scoops','calorieOverride','start'])
         && (d.age == '' || number(d.age,18,100)) && number(d.height,120,230) && number(d.weight,35,250)
         && d.sex in ['male','female'] && d.activity in [1.2,1.375,1.55,1.725] && d.goal in ['cut','maintain','gain']
-        && number(d.scoops,0,10) && (d.calorieOverride == '' || number(d.calorieOverride,1200,6000)) && date(d.start);
+        && number(d.scoops,0,10) && (d.calorieOverride == '' || number(d.calorieOverride,1200,6000)) && date(d.start)
+        && (!('training' in d) || training(d.training));
     }
     function nutrition(d) {
       return d is map && d.keys().hasOnly(['calories','protein','fat','carbs']) && d.keys().hasAll(['calories','protein','fat','carbs'])

@@ -5,7 +5,7 @@ const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const stable=value=>JSON.stringify(value,(_,v)=>plain(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 const same=(a,b)=>stable(a)===stable(b);
 const content=r=>r?{kind:r.kind,date:r.date,day:r.day,data:r.data,deleted:r.deleted}:null;
-const profileKeys=['age','height','weight','sex','activity','goal','scoops','calorieOverride','start'];
+const profileKeys=['age','height','weight','sex','activity','goal','scoops','calorieOverride','start','training'];
 const measurementKeys=['date','weight','waist','bodyfat','muscle','bodyProtein','proteinMass','metabolism','fatMass','bodyWater','bmi','ecw','inbodyScore','visceralFat','waistHip'];
 function canonicalState(state){
  if(!validateBackup(state))throw Error('Invalid records. Export a valid backup before trying again.');
@@ -16,6 +16,7 @@ function canonicalState(state){
  const defaults={sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'};
  for(const [key,value]of Object.entries(defaults))if(p[key]===undefined||key==='calorieOverride'&&p[key]===null)p[key]=value;
  for(const key of ['age','height','weight','activity','scoops','calorieOverride'])if(p[key]!=='')p[key]=Number(p[key]);
+ if(p.training)for(const baseline of Object.values(p.training.baselines))for(const key of ['kg','reps','sets'])baseline[key]=Number(baseline[key]);
  if(!['male','female'].includes(p.sex)||![1.2,1.375,1.55,1.725].includes(p.activity)||!['cut','maintain','gain'].includes(p.goal)||!Number.isFinite(p.scoops)||p.scoops<0||p.scoops>10||p.calorieOverride!==''&&(!Number.isFinite(p.calorieOverride)||p.calorieOverride<1200||p.calorieOverride>6000))throw Error('This profile contains unsupported cloud values. Check your profile before uploading.');
  for(const days of Object.values(next.sessions))for(const session of Object.values(days)){
   supported(session,['complete','exercises']);
