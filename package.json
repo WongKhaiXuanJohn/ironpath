@@ -1,1 +1,27 @@
-{"name":"ironpath","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","start":"python3 -m http.server 8766"}}
+{
+  "name": "ironpath",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 -m http.server 8766",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-ironpath 'node --test tests/rules/*.test.mjs'"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.1.0",
+    "firebase-tools": "15.34.2",
+    "node": "24.12.0"
+  },
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@opentelemetry/core": "^2.8.0",
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

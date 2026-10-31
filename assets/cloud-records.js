@@ -74,7 +74,7 @@ export class RecordStore{
    if(same(content(before[id]),content(after[id])))continue;
    const desired=after[id]||record(id,null,true),current=value.remote[id],old=value.pending[id];
    if(same(content(desired),content(current))){delete value.pending[id];delete value.conflicts[id];continue;}
-   const baseRevision=old?old.baseRevision:(view.versions[id]||0);
+   const baseRevision=old?old.baseRevision:(same(content(before[id]),content(current))?(current?.revision||0):(view.versions[id]||0));
    value.pending[id]={id,record:desired,baseRevision,mutationId:this.uuid()};
    if((current?.revision||0)!==baseRevision)value.conflicts[id]=true;
   }
@@ -99,7 +99,7 @@ export class RecordStore{
   if(!existing||existing.revision<=r.revision)value.remote[m.id]=copy(r);
   const current=value.pending[m.id];
   if(current?.mutationId===m.mutationId){delete value.pending[m.id];delete value.conflicts[m.id];}
-  else if(current&&current.baseRevision===m.baseRevision){current.baseRevision=r.revision;delete value.conflicts[m.id];}
+  else if(current&&current.baseRevision===m.baseRevision&&(!existing||existing.revision<=r.revision)){current.baseRevision=r.revision;delete value.conflicts[m.id];}
   value.lastSynced=Date.now();this.commit(value);delete this.inFlight[m.id];
  }
  failed(id){delete this.inFlight[id];}

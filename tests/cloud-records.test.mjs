@@ -58,3 +58,13 @@ test('removed records become queued tombstones and disappear on other devices',(
  const deleted={...mutation.record,revision:2,mutationId:mutation.mutationId};s.ack(mutation,deleted);
  const other=store();other.receive({...remote(initial()),'measurement_2026-10-30':deleted});assert.deepEqual(other.view().state.measurements,[]);
 });
+test('editing again after an own acknowledgement does not create a false conflict',()=>{
+ const s=store();s.receive(remote(initial()));change(s,d=>d.profile.weight=80);const shown=s.view(),m=s.begin('profile');s.ack(m,{...m.record,revision:2,mutationId:m.mutationId});
+ const next=structuredClone(shown.state);next.profile.weight=81;s.edit(next,shown);assert.equal(s.status().conflictCount,0);assert.equal(s.begin('profile').baseRevision,2);
+});
+test('an old acknowledgement cannot clear a newer remote conflict with an unsent edit',()=>{
+ const s=store();s.receive(remote(initial()));change(s,d=>d.profile.weight=80);const sent=s.begin('profile');change(s,d=>d.profile.weight=81);
+ const newer=initial();newer.profile.weight=79;s.receive(remote(newer,3,'newer-device'));assert.equal(s.status().conflictCount,1);
+ s.ack(sent,{...sent.record,revision:2,mutationId:sent.mutationId});
+ assert.equal(s.status().conflictCount,1);assert.equal(s.view().state.profile.weight,81);assert.equal(s.begin('profile'),null);
+});

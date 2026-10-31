@@ -19,11 +19,11 @@ The research review and full-week volume audit are in [the programme review](doc
 
 ## Data privacy and backups
 
-New workout, nutrition and body-composition entries default to today's local date. The date selectors load earlier entries; **Today** returns to the current date. The app refreshes its date at midnight or on returning to the tab. Dates are stored as ISO `YYYY-MM-DD` keys, ready for a future per-user Firebase integration; no database is configured by this upgrade.
+New workout, nutrition and body-composition entries default to today's local date. The date selectors load earlier entries; **Today** returns to the current date. The app refreshes its date at midnight or on returning to the tab. Dates are stored as ISO `YYYY-MM-DD` keys for device storage and private cloud records.
 
 Version-1 backups remain compatible, including archived RIR/Form values. These old fields are retained in imported records but no longer affect progression. The public repository includes no personal readings from reference photos.
 
-All entered data lives in `localStorage` in the current browser on the current origin. There is no cloud sync, login, analytics or server database. Source code and the standard exercise programme are public; your logged records are not committed or uploaded. Export JSON backups from **Your profile** regularly. Import on another device to transfer data. Local-preview data and the live site's data are separate. Clearing browser data can erase entries. Keep exported backups private.
+Signed-out records stay in browser storage. Google sign-in connects the approved owner's private Firestore account; other accounts have no database access. Account records save to a device cache/outbox first and then sync through revision-checked transactions. The status distinguishes pending, offline, conflicted and server-confirmed changes. Signing in does not upload existing device records: **Upload this device’s records** is a separate confirmation. Cloud imports keep existing cloud dates; device-only backup restore replaces device records. Source code and Firebase web identifiers are public; fitness records and administrative credentials are not in the repository. Export JSON backups regularly, especially before clearing browser data. Local-preview and live-site records are separate. There is no analytics or photo upload. See [Firebase setup and verification](docs/firebase-setup.md).
 
 Google Fonts loads optional typography from Google; system font fallbacks work when offline. No user-entered information is included in font requests.
 
@@ -35,14 +35,16 @@ References: [Mifflin et al.](https://pubmed.ncbi.nlm.nih.gov/2305711/), [ISSN pr
 
 ## Local development
 
-Requires Node 18+ for tests and Python 3 for a local server:
+Requires Node 24.12+ for Firebase development tests (a local Node runtime is installed with dev dependencies), Java 21+ for the Firestore emulator, and Python 3 for a local server:
 
 ```sh
+npm ci
 npm test
+npm run test:rules
 npm start
 ```
 
-Open `http://localhost:8766`. No dependency installation needed. Do not open `index.html` directly with `file://`; ES modules need HTTP.
+Open `http://localhost:8766`. The published website needs no build; dependencies are for local testing only. Do not open `index.html` directly with `file://`; ES modules need HTTP.
 
 ## Hosting
 

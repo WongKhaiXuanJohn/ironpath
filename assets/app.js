@@ -2,6 +2,8 @@ import {calculateNutrition,nextLoad,programmeWeek,weeklyAverage,validateBackup,v
 import {programme,volumes,phases,programmeForSession} from './programme.js?v=20261030d';
 import {measurementFields,recommendSet,previousExercise} from './tracking.js?v=20261030d';
 import {progressView} from './progress-ui.js?v=20261030d';
+import {createCloudSync} from './cloud-sync.js?v=20261031a';
+import {cloudPanel,cloudStatus,bindCloudPanel} from './cloud-ui.js?v=20261031a';
 
 const $=s=>document.querySelector(s);
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20,7 +22,30 @@ let trendMetric='weight',trendGroup='day',trendRange='90',trendFrom=addDays(toda
 let historyFrom='',historyTo=today;
 let measurementDraft=null;
 function notify(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4200);}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));$('.local-badge').innerHTML='<i></i> Saved on this device';return true;}catch{$('.local-badge').textContent='Not saved · export a backup';notify('Device storage is unavailable or full. Export your data to keep this session.');return false;}}
+let cloud,cloudView,cloudIdentity='',saving=false;
+const hasDraft=()=>Boolean(document.querySelector('#main form[data-dirty="true"]'));
+const editing=()=>hasDraft()||Boolean(document.activeElement?.closest('#main input,#main select,#main textarea'));
+function updateCloudUI(){
+ if(!cloud)return;const info=cloud.summary();$('.local-badge').textContent=cloudStatus(info);
+ const mount=$('#cloud-panel');if(mount){mount.innerHTML=cloudPanel(info);bindCloudPanel(cloud,{notify,hasDraft,onRefresh:render});}
+ document.querySelectorAll('#main input,#main select,#main textarea,#main button').forEach(el=>{
+  if(el.closest('#cloud-panel'))return;
+  if(info.readOnly){if(el.dataset.cloudLocked===undefined)el.dataset.cloudLocked=el.disabled?'1':'0';el.disabled=true;}
+  else if(el.dataset.cloudLocked!==undefined){el.disabled=el.dataset.cloudLocked==='1';delete el.dataset.cloudLocked;}
+ });
+}
+function cloudChanged(){
+ if(!cloud)return;const s=cloud.summary(),identity=`${s.mode}:${s.user?.uid||''}`;
+ if(identity!==cloudIdentity){cloudIdentity=identity;measurementDraft=null;deletedSet=null;if(!saving)render();else updateCloudUI();}
+ else if(!saving&&!editing())render();else updateCloudUI();
+}
+cloud=createCloudSync({initial,guestKey:KEY,onChange:cloudChanged});cloudView=cloud.view();state=cloudView.state;
+function persist(){
+ saving=true;
+ try{cloud.save(state,cloudView);cloudView={state:JSON.parse(JSON.stringify(state)),versions:cloudView.versions};updateCloudUI();return true;}
+ catch(error){$('.local-badge').textContent='Not saved · export a backup';notify(error.message||'Device storage is unavailable or full. Export your data to keep this session.');return false;}
+ finally{saving=false;}
+}
 function targets(){try{return calculateNutrition(state.profile);}catch{return null;}}
 const pageTitle={overview:'Overview',workouts:'Workouts',nutrition:'Nutrition',progress:'Progress',roadmap:'The 52-week plan',profile:'Your profile'};
 function header(kicker,title,subtitle,action=''){return `<div class="page-heading"><div><span class="eyebrow">${kicker}</span><h1>${title}</h1><p>${subtitle}</p></div>${action||`<div class="date-chip"><span>◷</span>${dateText(today,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>`}</div>`;}
@@ -95,7 +120,7 @@ function roadmap(){const w=activeWeek(),percent=Math.min(100,Math.max(0,(w-1)/52
  phases.map((p,i)=>`<section class="phase ${w>0&&w<=52&&i===phaseIndex()?'current':''}"><span class="phase-number">0${i+1}</span><div><span class="eyebrow">${p.label.toUpperCase()} ${w>0&&w<=52&&i===phaseIndex()?'· CURRENT PHASE':''}</span><h2>${p.title}</h2><p>${p.text}</p></div><div class="phase-weeks">WEEKS<b>${p.weeks}</b></div></section>`).join('')+
  `<div class="two-column" style="margin-top:23px">${panel('Progression that earns its place.',`<p class="note">Use double progression: build reps inside your prescribed range first. Once every working set reaches the ceiling with controlled technique, consider a small increase.</p><div class="formula">Bench example: 50 kg × 8 / 7 / 6 → build to 8 / 8 / 8 → consider 52.5 kg. This is an illustration, not a verified personal working weight.<br><br>Barbells: usually +2.5–5 kg where appropriate. Dumbbells and machines: the smallest practical increment. Never trade technique for load.</div>`)}${panel('Recovery is part of the programme.',`<p class="note">Consider a lighter week every 6–8 weeks or when recovery is inadequate. Reduce working sets by roughly half and stay further from failure.</p><div class="formula">Rest 2–3 minutes for demanding compounds and 60–120 seconds for isolation work, longer if needed. Aim for 7–9 hours of sleep. Stop painful movements and seek qualified help for persistent pain or medical limitations.</div>`)}</div>`+programmeReview();
 }
-function profile(){const p=state.profile,n=targets();return header('MAKE THE PLAN YOURS','Your starting point.','Adjust your details. Your nutrition targets move with you.')+
+function profile(){const p=state.profile,n=targets();return header('MAKE THE PLAN YOURS','Your starting point.','Adjust your details. Your nutrition targets move with you.')+`<div id="cloud-panel">${cloudPanel(cloud.summary())}</div>`+
  `<div class="two-column profile-layout">${panel('Personal details',`<form id="profile-form">
  <fieldset class="profile-section"><legend>01 / YOUR BODY</legend><div class="form-grid">
  <label class="field"><span class="field-label">Age <span class="muted">(years)</span></span><input name="age" type="number" min="18" max="100" step="1" required placeholder="Enter your age" value="${p.age}" aria-describedby="age-help"><small id="age-help">Used to personalize your energy estimate.</small></label>
@@ -110,11 +135,12 @@ function profile(){const p=state.profile,n=targets();return header('MAKE THE PLA
  <label class="field full"><span class="field-label">Calorie override <span class="muted">(kcal/day) · optional</span></span><input type="number" min="1200" max="6000" step="10" name="calorieOverride" value="${p.calorieOverride??''}" placeholder="Calculate automatically" aria-describedby="override-help"><small id="override-help">Leave blank for a calculated target. An override fixes calories; protein and fat still adjust with your weight.</small></label>
  </div></fieldset>
  <div class="profile-calculation"><p class="profile-preview-label">YOUR DAILY TARGETS / LIVE PREVIEW</p><div id="profile-preview" role="status" aria-live="polite">${n?`<strong>${n.calories.toLocaleString()} kcal · ${n.protein} g protein</strong><br><span class="note">${n.carbs} g carbs · ${n.fat} g fat</span>`:'Enter your age to calculate your nutrition targets.'}</div></div><p id="profile-error" class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="button">Save profile →</button><span class="muted" style="font-size:11px">Save to apply your changes.</span></div></form>`)}
- <div>${panel('Your data stays with you.',`<p class="note">Your profile, workout logs and check-ins are stored in this browser on this device. There is no account or cloud sync. Clearing browser data can remove your records.</p><p class="note" style="margin-top:12px">Export a backup regularly. To move to another device or browser, export here and import there. Keep backup files private.</p><div class="backup-buttons"><button class="button secondary" id="export-data">↓ Export my backup (.json)</button><label class="button secondary" for="import-data" tabindex="0" id="import-label">↑ Restore from a backup</label><input type="file" id="import-data" accept=".json,application/json" hidden></div><p id="backup-error" class="form-error" role="alert"></p>`)}<div style="height:18px"></div>${panel('A plan with clear boundaries.',`<p class="note">Monday–Thursday contains all essential work. Friday adds optional upper-body accessories, Saturday offers supported lower-body and abs work, and Sunday is easy conditioning and standing mobility. Rest remains a good choice. Tuesday keeps squat, standing overhead press and conventional deadlift. Monday abs use the Captain’s Chair Knee Raise.</p><div class="formula">Profile defaults are editable starting values. Working-weight ranges are trial examples only. The adult nutrition calculator provides estimates; validate them against 2–3 weeks of your actual weight trend and recovery.</div>`)}</div></div>`;
+ <div>${panel('Your data stays with you.',`<p class="note">${cloud.summary().mode==='account'?'Your records are saved to your approved account, with a device copy for pending changes. Check the cloud status before clearing browser data.':'Your records are saved in this browser. Sign in above to connect your private account; existing device records are uploaded only when you choose.'}</p><p class="note" style="margin-top:12px">Keep a JSON backup as an additional copy. Cloud saving lets your approved account retrieve records on other devices. Keep exported files private.</p><div class="backup-buttons"><button class="button secondary" id="export-data">↓ Export my backup (.json)</button><label class="button secondary" for="import-data" tabindex="0" id="import-label">↑ Restore from a backup</label><input type="file" id="import-data" accept=".json,application/json" hidden></div><p id="backup-error" class="form-error" role="alert"></p>`)}<div style="height:18px"></div>${panel('A plan with clear boundaries.',`<p class="note">Monday–Thursday contains all essential work. Friday adds optional upper-body accessories, Saturday offers supported lower-body and abs work, and Sunday is easy conditioning and standing mobility. Rest remains a good choice. Tuesday keeps squat, standing overhead press and conventional deadlift. Monday abs use the Captain’s Chair Knee Raise.</p><div class="formula">Profile defaults are editable starting values. Working-weight ranges are trial examples only. The adult nutrition calculator provides estimates; validate them against 2–3 weeks of your actual weight trend and recovery.</div>`)}</div></div>`;
 }
-function render(){const route=location.hash.slice(1)||'overview',view=pageTitle[route]?route:'overview';$('#main').innerHTML=({overview,workouts:workout,nutrition,progress,roadmap,profile}[view])();document.title=`${pageTitle[view]} · Ironpath`;document.querySelectorAll('[data-nav]').forEach(a=>{const active=a.dataset.nav===view;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});$('#breadcrumb').innerHTML=`Your workspace <span>/</span> ${pageTitle[view]}`;const w=activeWeek();$('#side-week').textContent=w===0?'Starting soon':w>52?'52 weeks complete':`Week ${w} of 52`;$('#side-progress').style.width=`${Math.max(0,Math.min(100,(w-1)/52*100))}%`;bind(view);}
+function render(){if(cloud){cloudView=cloud.view();state=cloudView.state;}const route=location.hash.slice(1)||'overview',view=pageTitle[route]?route:'overview';$('#main').innerHTML=({overview,workouts:workout,nutrition,progress,roadmap,profile}[view])();document.title=`${pageTitle[view]} · Ironpath`;document.querySelectorAll('[data-nav]').forEach(a=>{const active=a.dataset.nav===view;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});$('#breadcrumb').innerHTML=`Your workspace <span>/</span> ${pageTitle[view]}`;const w=activeWeek();$('#side-week').textContent=w===0?'Starting soon':w>52?'52 weeks complete':`Week ${w} of 52`;$('#side-progress').style.width=`${Math.max(0,Math.min(100,(w-1)/52*100))}%`;bind(view);updateCloudUI();}
 function openWorkout(day,date){selectedDay=day;sessionDate=date;if(location.hash==='#workouts')render();else location.hash='workouts';}
 function bind(view){
+ document.querySelectorAll('#main form').forEach(form=>form.addEventListener('input',()=>{form.dataset.dirty='true';}));
  document.querySelectorAll('[data-open-today]').forEach(a=>a.onclick=()=>{selectedDay=dayIndex(today);sessionDate=today;});
  document.querySelectorAll('[data-overview-day]').forEach(b=>b.onclick=()=>openWorkout(Number(b.dataset.overviewDay),b.dataset.date>today?today:b.dataset.date));
  document.querySelectorAll('[data-log-date]').forEach(b=>b.onclick=()=>{openWorkout(Number(b.dataset.logDay),b.dataset.logDate);window.scrollTo({top:0,behavior:'instant'});});
@@ -128,8 +154,8 @@ function bind(view){
  if(view==='profile')bindProfile();
  if(view==='nutrition'){
   $('#nutrition-date').onchange=e=>{if(validDate(e.target.value)&&e.target.value<=today){nutritionDate=e.target.value;render();}};
-  $('#nutrition-form').onsubmit=e=>{e.preventDefault();state.nutrition[nutritionDate]=Object.fromEntries([...new FormData(e.target)].map(([k,v])=>[k,Number(v)]));persist();notify('Nutrition saved for '+dateText(nutritionDate)+'.');};
-  $('#whey-form').onsubmit=e=>{e.preventDefault();state.profile.scoops=Number(new FormData(e.target).get('scoops'));persist();render();notify('Whey plan updated.');};
+  $('#nutrition-form').onsubmit=e=>{e.preventDefault();delete e.target.dataset.dirty;state.nutrition[nutritionDate]=Object.fromEntries([...new FormData(e.target)].map(([k,v])=>[k,Number(v)]));if(!persist())return;notify('Nutrition saved for '+dateText(nutritionDate)+'.');};
+  $('#whey-form').onsubmit=e=>{e.preventDefault();delete e.target.dataset.dirty;state.profile.scoops=Number(new FormData(e.target).get('scoops'));if(!persist())return;render();notify('Whey plan updated.');};
  }
  if(view==='progress')bindProgress();
 }
@@ -154,11 +180,11 @@ function bindProgress(){
   }
   const next={...state,profile:p,measurements:state.measurements.filter(x=>x.date!==r.date).concat(r)};
   if(!validateBackup(next)){$('#measurement-error').textContent='Please check the reading values and units.';return;}
-  state=next;measurementDraft=null;
+  delete e.target.dataset.dirty;state=next;measurementDraft=null;
   if(r[trendMetric]===''||r[trendMetric]===undefined)trendMetric=measurementFields.find(field=>r[field.key]!==''&&r[field.key]!==undefined).key;
   if(r.date<trendFrom){trendFrom=r.date;trendRange='custom';}
   if(r.date>trendTo){trendTo=r.date;trendRange='custom';}
-  persist();render();notify('Check-in saved for '+dateText(measurementDate)+'.');
+  if(!persist())return;render();notify('Check-in saved for '+dateText(measurementDate)+'.');
  };
 }
 function updateSessionProgress(){
@@ -183,7 +209,7 @@ function bindWorkout(){
   if(field==='done'&&input.checked&&(!set.reps||(ex.loadType==='kg'&&!set.kg))){input.checked=false;notify('Enter your actual load and reps before completing the set.');return;}
   set[field]=input.type==='checkbox'?input.checked:Number(input.value);
   if(field!=='done')set.done=false;
-  s.complete=false;persist();row.querySelector('.done-check').checked=set.done;
+  s.complete=false;if(!persist())return;row.querySelector('.done-check').checked=set.done;
   $('#suggestion-'+ex.id).innerHTML=suggestion(ex);updateSessionProgress();
   $('.record-status').textContent='● Saved session · continue editing';
  });
@@ -193,39 +219,39 @@ function bindWorkout(){
   if(s.exercises[ex.id].length>=20){notify('Maximum 20 sets per exercise.');return;}
   const row={type:b.dataset.type,kg:0,reps:0,done:false};
   if(row.type==='warmup'){const firstWork=s.exercises[ex.id].findIndex(x=>x.type==='working');s.exercises[ex.id].splice(firstWork<0?s.exercises[ex.id].length:firstWork,0,row);}else s.exercises[ex.id].push(row);
-  s.complete=false;persist();render();
+  s.complete=false;if(!persist())return;render();
  });
  document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{
   const ex=workoutDay().exercises.find(e=>e.id===b.dataset.remove),s=session(true);s.exercises[ex.id]??=defaultSets(ex);
   const index=Number(b.dataset.index),[row]=s.exercises[ex.id].splice(index,1);
-  deletedSet={date:sessionDate,day:selectedDay,id:ex.id,index,row};s.complete=false;persist();render();
+  deletedSet={date:sessionDate,day:selectedDay,id:ex.id,index,row};s.complete=false;if(!persist())return;render();
  });
  if($('#undo-set'))$('#undo-set').onclick=()=>{
   const s=session(true),rows=s.exercises[deletedSet.id]??=[];
   if(rows.length>=20){notify('Remove a set first to restore this one.');return;}
-  rows.splice(deletedSet.index,0,deletedSet.row);s.complete=false;deletedSet=null;persist();render();
+  rows.splice(deletedSet.index,0,deletedSet.row);s.complete=false;deletedSet=null;if(!persist())return;render();
  };
  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{
   const ex=workoutDay().exercises.find(e=>e.id===b.dataset.copy),previous=previousExercise(ex,state.sessions,sessionDate);
   if(!previous){notify('No earlier completed sets for this exercise yet.');return;}
   if(setsFor(ex).some(s=>s.done||s.reps||s.kg)){notify('This exercise already has entries. Earlier values were not copied over them.');return;}
-  session(true).exercises[ex.id]=previous.sets.map(({type,kg,reps})=>({type,kg,reps,done:false}));session(true).complete=false;persist();render();notify('Previous loads and reps copied. Confirm your actual sets as you complete them.');
+  session(true).exercises[ex.id]=previous.sets.map(({type,kg,reps})=>({type,kg,reps,done:false}));session(true).complete=false;if(!persist())return;render();notify('Previous loads and reps copied. Confirm your actual sets as you complete them.');
  });
  $('#finish-session').onclick=()=>{
   const all=workoutDay().exercises.flatMap(e=>setsFor(e).filter(s=>s.type==='working'));
   if(!all.length){notify('Add at least one working set to finish a session.');return;}
   if(!all.every(s=>s.done)){notify('Complete your selected working sets first, or remove the sets you are skipping. Your partial workout is saved.');return;}
-  session(true).complete=true;persist();render();notify('Session complete. Good work—now recover.');
+  session(true).complete=true;if(!persist())return;render();notify('Session complete. Good work—now recover.');
  };
 }
 function readProfile(form){const f=new FormData(form);return {...state.profile,...Object.fromEntries(f),age:f.get('age')===''?'':Number(f.get('age')),height:Number(f.get('height')),weight:Number(f.get('weight')),activity:Number(f.get('activity')),calorieOverride:f.get('calorieOverride')===''?'':Number(f.get('calorieOverride'))};}
 function bindProfile(){
  const form=$('#profile-form');
  form.oninput=()=>{try{const n=calculateNutrition(readProfile(form));$('#profile-preview').innerHTML=`<strong>${n.calories.toLocaleString()} kcal · ${n.protein} g protein</strong><br><span class="note">${n.carbs} g carbs · ${n.fat} g fat${n.override?' · Calorie override active':''}</span>`;$('#profile-error').textContent='';}catch(err){$('#profile-preview').textContent='Complete valid details to preview your targets.';$('#profile-error').textContent=err.message;}};
- form.onsubmit=e=>{e.preventDefault();const p=readProfile(form);try{calculateNutrition(p);if(!validDate(p.start))throw Error('Choose a valid programme start date.');state.profile=p;persist();render();notify('Profile saved. Nutrition targets updated.');}catch(err){$('#profile-error').textContent=err.message;}};
- $('#export-data').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`ironpath-backup-${today}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Backup exported. Keep it somewhere private.');};
+ form.onsubmit=e=>{e.preventDefault();const p=readProfile(form);try{calculateNutrition(p);if(!validDate(p.start))throw Error('Choose a valid programme start date.');delete form.dataset.dirty;state.profile=p;if(!persist())return;render();notify('Profile saved. Nutrition targets updated.');}catch(err){$('#profile-error').textContent=err.message;}};
+ $('#export-data').onclick=()=>{const blob=new Blob([JSON.stringify(cloud.view().state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`ironpath-backup-${today}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Backup exported. Keep it somewhere private.');};
  $('#import-label').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#import-data').click();}};
- $('#import-data').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5_000_000)throw Error('Backup is too large. Choose an Ironpath JSON backup under 5 MB.');const data=JSON.parse(await file.text());if(!validateBackup(data))throw Error('This is not a valid Ironpath backup. Your current data has not changed.');const dialog=$('#confirm-dialog');dialog.returnValue='';dialog.onclose=()=>{if(dialog.returnValue==='restore'){state=data;persist();render();notify('Backup restored.');}};dialog.showModal();}catch(err){$('#backup-error').textContent=err.message;}e.target.value='';};
+ $('#import-data').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5_000_000)throw Error('Backup is too large. Choose an Ironpath JSON backup under 5 MB.');const data=JSON.parse(await file.text());if(!validateBackup(data))throw Error('This is not a valid Ironpath backup. Your current data has not changed.');const dialog=$('#confirm-dialog');dialog.returnValue='';const isCloud=cloud.summary().mode==='account';dialog.querySelector('h2').textContent=isCloud?'Import into your private account?':'Replace this device’s data?';dialog.querySelector('p').textContent=isCloud?'This uploads the backup’s profile, workouts, nutrition and body-composition records to your Ironpath Firebase account. Existing cloud dates are kept; unrelated records are not removed.':'Your current profile, workout logs and check-ins will be replaced by the selected backup. Export your current data first to keep it.';dialog.onclose=()=>{if(dialog.returnValue==='restore'){try{const result=cloud.importBackup(data);render();notify(cloud.summary().mode==='account'?`${result.added} imported; ${result.skipped} existing records kept.`:'Backup restored.');}catch(error){notify(error.message);}}};dialog.showModal();}catch(err){$('#backup-error').textContent=err.message;}e.target.value='';};
 }
 function refreshCalendar(){
  const now=localDate();if(now===today)return;
@@ -242,3 +268,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshCal
 setInterval(refreshCalendar,60000);
 window.addEventListener('hashchange',()=>{render();window.scrollTo({top:0,behavior:'instant'});});
 render();if(storageWarning)notify(storageWarning);
+
+window.addEventListener('online',()=>cloud.changed());
+window.addEventListener('offline',()=>cloud.changed());

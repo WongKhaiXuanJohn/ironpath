@@ -5,3 +5,6 @@ output/
 *.pdf
 *.env
 tmp/
+.superpowers/
+*-debug.log
+.firebase/
