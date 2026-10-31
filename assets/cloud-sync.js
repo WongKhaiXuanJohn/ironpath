@@ -1,7 +1,7 @@
-import {RecordStore,stateToRecords} from './cloud-records.js?v=20261031a';
-import {firebaseConfig,ownerUid as configuredOwner} from './firebase-config.js?v=20261031a';
-import {createFirebaseTransport} from './cloud-transport.js?v=20261031a';
-import {validateBackup} from './core.js?v=20261030d';
+import {RecordStore,stateToRecords} from './cloud-records.js?v=20261031c';
+import {firebaseConfig,ownerUid as configuredOwner} from './firebase-config.js?v=20261031c';
+import {createFirebaseTransport} from './cloud-transport.js?v=20261031c';
+import {validateBackup} from './core.js?v=20261031c';
 const copy=value=>JSON.parse(JSON.stringify(value));
 const checkBackup=state=>{if(!validateBackup(state))throw Error('Invalid records. Keep your original backup.');};
 const recordCount=state=>1+Object.values(state.sessions).reduce((n,days)=>n+Object.keys(days).length,0)+Object.keys(state.nutrition).length+state.measurements.length;

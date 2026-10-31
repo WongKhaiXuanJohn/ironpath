@@ -1,10 +1,12 @@
-import {calculateNutrition,nextLoad,programmeWeek,weeklyAverage,validateBackup,validDate} from './core.js?v=20261030d';
-import {programme,volumes,phases,programmeForSession} from './programme.js?v=20261030d';
-import {measurementFields,recommendSet,previousExercise} from './tracking.js?v=20261030d';
-import {progressView} from './progress-ui.js?v=20261031b';
-import {createCloudSync} from './cloud-sync.js?v=20261031a';
-import {cloudPanel,cloudStatus,bindCloudPanel} from './cloud-ui.js?v=20261031a';
-import {captureMeasurementDraft,measurementBaseline} from './measurement-draft.js?v=20261031a';
+import {calculateNutrition,nextLoad,programmeWeek,weeklyAverage,validateBackup,validDate} from './core.js?v=20261031c';
+import {programme,volumes,phases,programmeForSession} from './programme.js?v=20261031c';
+import {measurementFields,recommendSet,previousExercise} from './tracking.js?v=20261031c';
+import {progressView} from './progress-ui.js?v=20261031c';
+import {createCloudSync} from './cloud-sync.js?v=20261031c';
+import {cloudPanel,cloudStatus,bindCloudPanel} from './cloud-ui.js?v=20261031c';
+import {captureMeasurementDraft,measurementBaseline} from './measurement-draft.js?v=20261031c';
+import {trainingPanel,readTraining} from './strength-ui.js?v=20261031c';
+import {experiencedRecommendation} from './strength.js?v=20261031c';
 
 const $=s=>document.querySelector(s);
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -73,7 +75,7 @@ function workoutDay(){return programmeForSession(selectedDay,state.sessions[sess
 function session(create=false){const days=state.sessions[sessionDate];if(days?.[selectedDay])return days[selectedDay];if(!create)return {exercises:{},complete:false};state.sessions[sessionDate]??={};return state.sessions[sessionDate][selectedDay]={exercises:{},complete:false};}
 function defaultSets(ex){return Array.from({length:ex.sets},()=>({type:'working',kg:0,reps:0,done:false}));}
 function setsFor(ex){return session().exercises[ex.id]??defaultSets(ex);}
-function recommended(ex,s,i){const index=setsFor(ex).slice(0,i).filter(x=>x.type===s.type).length;return recommendSet(ex,state.sessions,sessionDate,index,s.type);}
+function recommended(ex,s,i){const rows=setsFor(ex),index=rows.slice(0,i).filter(x=>x.type===s.type).length;return recommendSet(ex,state.sessions,sessionDate,index,s.type,state.profile.training,rows.filter(x=>x.type==='working').length);}
 function setRow(ex,s,i){
  const warm=s.type==='warmup',number=setsFor(ex).slice(0,i+1).filter(x=>x.type===s.type).length,r=recommended(ex,s,i);
  const load=ex.loadType==='cardio'?'—':ex.loadType==='bodyweight'?'BW':r.kg+' kg'+(ex.loadType==='assisted'?' assist.':ex.trial.includes('/ hand')?' / hand':ex.trial.includes('/ side')?' / side':'');
@@ -84,7 +86,22 @@ function setRow(ex,s,i){
  '<input class="done-check" type="checkbox" aria-label="'+ex.name+' row '+(i+1)+' complete" data-field="done" '+(s.done?'checked':'')+'>'+
  '<button class="remove-set" data-remove="'+ex.id+'" data-index="'+i+'" aria-label="Remove '+ex.name+' '+(warm?'warm-up':'working')+' set '+number+'" title="Remove set">×</button></div>';
 }
-function suggestion(ex){const s=nextLoad(ex,setsFor(ex));return (s.kg!==null?'<strong>Next session: '+s.kg+' kg'+(ex.trial.includes('/ hand')?' / hand':'')+'.</strong> ':'')+s.message;}
+function suggestion(ex){
+ if(state.profile.training?.mode==='experienced'){
+  const sets=setsFor(ex),work=sets.filter(s=>s.type==='working');
+  if(!work.length||work.some(s=>!s.done||!s.reps))return 'Complete your actual working sets to see a next-session guide.';
+  const result=experiencedRecommendation(ex,{date:sessionDate,sets},addDays(sessionDate,1),0,'working',{mode:'experienced',baselines:{}},work.length);
+  const uniform=work.every(s=>Number(s.kg)===Number(work[0].kg));
+  return (uniform&&ex.loadType==='kg'?'<strong>Next-session trial: '+result.kg+' kg'+(ex.trial.includes('/ hand')?' / hand':'')+'.</strong> ':'')+escape(result.note||'Repeat comfortable work and adjust manually.');
+ }
+ const s=nextLoad(ex,setsFor(ex));return (s.kg!==null?'<strong>Next session: '+s.kg+' kg'+(ex.trial.includes('/ hand')?' / hand':'')+'.</strong> ':'')+s.message;
+}
+function recommendationGuide(ex){
+ if(state.profile.training?.mode!=='experienced')return '';
+ const r=recommendSet(ex,state.sessions,sessionDate,0,'working',state.profile.training,setsFor(ex).filter(s=>s.type==='working').length);
+ const unit=ex.loadType==='assisted'?' kg assistance':ex.trial.includes('/ hand')?' kg per hand':ex.trial.includes('/ side')?' kg per side':' kg';
+ return '<div class="recommendation-context"><strong>'+escape(r.source)+(r.range?' · '+r.range.join('–')+unit:'')+'</strong><p>'+escape(r.note||'Use controlled repetitions and adjust to how you feel today.')+(r.date?' Reference: '+dateText(r.date)+'.':'')+'</p></div>';
+}
 function dateControl(id,value,label){return '<div class="date-control"><label class="field">'+label+'<input id="'+id+'" type="date" value="'+value+'" max="'+today+'"></label><button type="button" class="button secondary small" data-today="'+id+'">Today</button></div>';}
 function workout(){
  const day=workoutDay(),all=day.exercises.flatMap(e=>setsFor(e).filter(s=>s.type==='working')),done=all.filter(s=>s.done).length;
@@ -93,10 +110,11 @@ function workout(){
  '<div class="workout-toolbar">'+dateControl('session-date',sessionDate,'Workout date')+'<span class="record-status '+(saved?'has-record':'')+'">'+(saved?(saved.complete?'✓ Completed session':'● Saved session · continue editing'):'New session · '+(sessionDate===today?'today':dateText(sessionDate)))+'</span></div>'+
  '<div class="day-tabs seven-days" role="group" aria-label="Workout template">'+programme.map((d,i)=>'<button class="day-tab '+(selectedDay===i?'active':'')+'" data-day="'+i+'" aria-pressed="'+(selectedDay===i)+'">'+d.short+'<small>'+(i>=4?'Optional':'Core')+'</small></button>').join('')+'</div>'+
  '<section class="session-head"><span class="eyebrow">'+day.day.toUpperCase()+' / '+day.tag.toUpperCase()+'</span><h2>'+day.title+'</h2><p>'+day.focus+'</p><div class="meta"><span>◷ '+day.time+'</span><span>'+day.exercises.length+' exercises</span><span>'+(day.archived?'Saved original template':selectedDay>=4?'Optional · rest is welcome':'Core session')+'</span></div></section>'+
- '<div class="callout session-note"><span>ⓘ</span><div><strong>A guide, with room to make it yours.</strong><p>'+day.note+' Suggested loads are examples, not a strength assessment. Start lighter if needed; machines vary. “From your history” uses completed sets before this date. Add, remove or skip sets freely.</p></div></div>'+
+ '<div class="callout session-note"><span>ⓘ</span><div><strong>A guide, with room to make it yours.</strong><p>'+day.note+' Suggested loads are examples, not a strength assessment. Start lighter if needed; machines vary. History suggestions use completed sets before this date. Newer private calibrations take priority over older sessions. Add, remove or skip sets freely.</p></div></div>'+
  (deletedSet&&deletedSet.date===sessionDate&&deletedSet.day===selectedDay?'<div class="undo-bar" role="status"><span>Set removed.</span><button class="button ghost small" id="undo-set">Undo removal ↶</button></div>':'')+
  day.exercises.map((ex,i)=>'<section class="panel exercise"><div class="exercise-header"><div class="exercise-title"><span class="exercise-number">'+String(i+1).padStart(2,'0')+'</span><div><h3>'+ex.name+'</h3><p>Guide: '+ex.sets+(ex.sets===1?' set × ':' sets × ')+ex.min+'–'+ex.max+(ex.loadType==='cardio'?' min':' reps')+' · '+(ex.loadType==='assisted'?'kg = assistance':ex.trial.includes('/ hand')?'kg per hand':ex.trial.includes('/ side')?'kg per side':ex.loadType==='cardio'?'minutes only':ex.muscle==='Mobility'?'easy bodyweight movement':ex.loadType==='bodyweight'?'bodyweight · added kg only':'total kg')+'</p></div></div><span class="tag neutral">'+ex.muscle+'</span></div>'+
  '<details><summary>Technique & logging guide ↗</summary><p>'+ex.cue+' '+(ex.muscle==='Mobility'?'No external load is needed; log comfortable repetitions.':ex.loadType==='bodyweight'?'Bodyweight is 0 kg; enter only additional load.':ex.loadType==='assisted'?'Enter assistance in kg; less assistance is harder. Adjust it for controlled reps.':ex.loadType==='cardio'?'Log minutes; no load is needed.':'Choose a load that allows controlled repetitions. Suggestions are optional.')+' Warm-ups do not count toward working sets.</p></details>'+
+ recommendationGuide(ex)+
  '<div class="set-head"><span>SET</span><span>SUGGESTED</span><span>ACTUAL KG</span><span>'+(ex.loadType==='cardio'?'MINUTES':'REPS')+'</span><span>DONE</span><span></span></div>'+
  setsFor(ex).map((s,j)=>setRow(ex,s,j)).join('')+
  (!setsFor(ex).length?'<p class="skipped-note">No sets planned. Add a set to include this exercise.</p>':'')+
@@ -121,7 +139,7 @@ function roadmap(){const w=activeWeek(),percent=Math.min(100,Math.max(0,(w-1)/52
  phases.map((p,i)=>`<section class="phase ${w>0&&w<=52&&i===phaseIndex()?'current':''}"><span class="phase-number">0${i+1}</span><div><span class="eyebrow">${p.label.toUpperCase()} ${w>0&&w<=52&&i===phaseIndex()?'· CURRENT PHASE':''}</span><h2>${p.title}</h2><p>${p.text}</p></div><div class="phase-weeks">WEEKS<b>${p.weeks}</b></div></section>`).join('')+
  `<div class="two-column" style="margin-top:23px">${panel('Progression that earns its place.',`<p class="note">Use double progression: build reps inside your prescribed range first. Once every working set reaches the ceiling with controlled technique, consider a small increase.</p><div class="formula">Bench example: 50 kg × 8 / 7 / 6 → build to 8 / 8 / 8 → consider 52.5 kg. This is an illustration, not a verified personal working weight.<br><br>Barbells: usually +2.5–5 kg where appropriate. Dumbbells and machines: the smallest practical increment. Never trade technique for load.</div>`)}${panel('Recovery is part of the programme.',`<p class="note">Consider a lighter week every 6–8 weeks or when recovery is inadequate. Reduce working sets by roughly half and stay further from failure.</p><div class="formula">Rest 2–3 minutes for demanding compounds and 60–120 seconds for isolation work, longer if needed. Aim for 7–9 hours of sleep. Stop painful movements and seek qualified help for persistent pain or medical limitations.</div>`)}</div>`+programmeReview();
 }
-function profile(){const p=state.profile,n=targets();return header('MAKE THE PLAN YOURS','Your starting point.','Adjust your details. Your nutrition targets move with you.')+`<div id="cloud-panel">${cloudPanel(cloud.summary())}</div>`+
+function profile(){const p=state.profile,n=targets();return header('MAKE THE PLAN YOURS','Your starting point.','Adjust your details. Your nutrition targets move with you.')+`<div id="cloud-panel">${cloudPanel(cloud.summary())}</div>`+trainingPanel(p,today)+
  `<div class="two-column profile-layout">${panel('Personal details',`<form id="profile-form">
  <fieldset class="profile-section"><legend>01 / YOUR BODY</legend><div class="form-grid">
  <label class="field"><span class="field-label">Age <span class="muted">(years)</span></span><input name="age" type="number" min="18" max="100" step="1" required placeholder="Enter your age" value="${p.age}" aria-describedby="age-help"><small id="age-help">Used to personalize your energy estimate.</small></label>
@@ -248,9 +266,19 @@ function bindWorkout(){
 }
 function readProfile(form){const f=new FormData(form);return {...state.profile,...Object.fromEntries(f),age:f.get('age')===''?'':Number(f.get('age')),height:Number(f.get('height')),weight:Number(f.get('weight')),activity:Number(f.get('activity')),calorieOverride:f.get('calorieOverride')===''?'':Number(f.get('calorieOverride'))};}
 function bindProfile(){
+ const trainingForm=$('#training-form');
+ trainingForm.onsubmit=e=>{
+  e.preventDefault();$('#training-error').textContent='';$('#training-status').textContent='';
+  try{
+   const training=readTraining(new FormData(trainingForm));
+   state.profile={...state.profile,training};if(!persist())return;
+   delete trainingForm.dataset.dirty;$('#training-status').textContent='Training settings saved. Workout suggestions now use this approach.';
+   notify('Training settings saved. Your workout guides are updated.');
+  }catch(error){$('#training-error').textContent=error.message;}
+ };
  const form=$('#profile-form');
  form.oninput=()=>{try{const n=calculateNutrition(readProfile(form));$('#profile-preview').innerHTML=`<strong>${n.calories.toLocaleString()} kcal · ${n.protein} g protein</strong><br><span class="note">${n.carbs} g carbs · ${n.fat} g fat${n.override?' · Calorie override active':''}</span>`;$('#profile-error').textContent='';}catch(err){$('#profile-preview').textContent='Complete valid details to preview your targets.';$('#profile-error').textContent=err.message;}};
- form.onsubmit=e=>{e.preventDefault();const p=readProfile(form);try{calculateNutrition(p);if(!validDate(p.start))throw Error('Choose a valid programme start date.');delete form.dataset.dirty;state.profile=p;if(!persist())return;render();notify('Profile saved. Nutrition targets updated.');}catch(err){$('#profile-error').textContent=err.message;}};
+ form.onsubmit=e=>{e.preventDefault();const p=readProfile(form);try{calculateNutrition(p);if(!validDate(p.start))throw Error('Choose a valid programme start date.');state.profile=p;if(!persist())return;delete form.dataset.dirty;if(!hasDraft())render();notify('Profile saved. Nutrition targets updated.');}catch(err){$('#profile-error').textContent=err.message;}};
  $('#export-data').onclick=()=>{const blob=new Blob([JSON.stringify(cloud.view().state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`ironpath-backup-${today}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Backup exported. Keep it somewhere private.');};
  $('#import-label').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#import-data').click();}};
  $('#import-data').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5_000_000)throw Error('Backup is too large. Choose an Ironpath JSON backup under 5 MB.');const data=JSON.parse(await file.text());if(!validateBackup(data))throw Error('This is not a valid Ironpath backup. Your current data has not changed.');const dialog=$('#confirm-dialog');dialog.returnValue='';const destination=cloud.destination(),isCloud=cloud.summary().mode==='account';dialog.querySelector('h2').textContent=isCloud?'Import into your private account?':'Replace this device’s data?';dialog.querySelector('p').textContent=isCloud?'This uploads the backup’s profile, workouts, nutrition and body-composition records to your Ironpath Firebase account. Existing cloud dates are kept; unrelated records are not removed.':'Your current profile, workout logs and check-ins will be replaced by the selected backup. Export your current data first to keep it.';dialog.onclose=()=>{if(dialog.returnValue==='restore'){try{const result=cloud.importBackup(data,destination);render();notify(cloud.summary().mode==='account'?`${result.added} imported; ${result.skipped} existing records kept.`:'Backup restored.');}catch(error){notify(error.message);}}};dialog.showModal();}catch(err){$('#backup-error').textContent=err.message;}e.target.value='';};

@@ -1,4 +1,4 @@
-import {validateBackup,validDate} from './core.js?v=20261030d';
+import {validateBackup,validDate} from './core.js?v=20261031c';
 
 const copy=value=>JSON.parse(JSON.stringify(value));
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

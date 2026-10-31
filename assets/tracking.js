@@ -1,4 +1,4 @@
-import {nextLoad,validDate} from './core.js?v=20261030d';
+import {nextLoad,validDate} from './core.js?v=20261031c';
 import {experiencedRecommendation} from './strength.js?v=20261031c';
 export const measurementFields=[
  {key:'weight',label:'Body weight',unit:'kg',min:35,max:250,step:.1},

@@ -172,3 +172,27 @@
  .report-grid strong { font-size: 23px; }
  .report-grid > div > span { font-size: 10px; }
 }
+
+/* Private training calibration: equal cards, aligned numeric rows and date controls. */
+.training-panel { margin-bottom: 24px; }
+.training-panel .panel-heading { align-items: flex-start; gap: 18px; }
+.training-panel .eyebrow { margin-bottom: 9px; }
+.training-mode { display: block; max-width: 440px; margin: 24px 0; }
+.training-mode > span { display: block; margin-bottom: 9px; }
+.training-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.strength-baseline { min-width: 0; margin: 0; padding: 20px 16px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fbfcf8; }
+.strength-baseline legend { padding: 0 7px; font-size: 13px; font-weight: 600; color: var(--green); }
+.baseline-numbers { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.training-panel label.field { min-width: 0; font-size: 11px; }
+.training-panel label.field > span { display: block; min-height: 18px; margin-bottom: 8px; }
+.training-panel label.field > input,.training-panel label.field > select { width: 100%; min-width: 0; height: 48px; min-height: 48px; box-sizing: border-box; padding: 10px; }
+.baseline-date { display: block; margin-top: 16px; }
+.training-method { padding: 17px 20px; margin-top: 20px; background: #edf3e8; border-radius: 12px; color: var(--green); font-size: 12px; }
+.training-method p { margin-top: 7px; line-height: 1.8; font-size: 11px; }
+.training-panel .form-actions { gap: 14px; flex-wrap: wrap; }
+.training-panel .form-actions .muted { font-size: 11px; }
+.recommendation-context { margin: 15px 0 18px; padding: 14px 16px; border-left: 3px solid #a7bd95; background: #f4f7ef; border-radius: 0 9px 9px 0; }
+.recommendation-context strong { font-size: 11px; color: var(--green); }
+.recommendation-context p { margin-top: 5px; color: #73806d; font-size: 10px; line-height: 1.8; }
+@media (max-width: 1050px) { .training-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .training-panel { padding: 22px 18px; } .training-panel .panel-heading { flex-wrap: wrap; } .training-panel label.field > input,.training-panel label.field > select { font-size: 16px; } .training-mode { max-width: none; } .strength-baseline { padding: 18px 12px 12px; } }
