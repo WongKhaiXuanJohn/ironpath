@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function owner(uid) {
-      return request.auth != null && request.auth.uid == 'owner-pending-verification' && uid == request.auth.uid;
+      return request.auth != null && request.auth.uid == 'kZdy0VcUf5bUXTTLrHYhzGhvcuw2' && uid == request.auth.uid;
     }
     function number(v,low,high) { return (v is int || v is float) && v >= low && v <= high; }
     function optional(d,k,low,high) { return !(k in d) || d[k] == '' || number(d[k],low,high); }
