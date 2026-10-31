@@ -4,13 +4,13 @@
 
 Project: `ironpath-f62d5`, Spark. Firestore Standard `(default)` is in `asia-southeast1` (Singapore). GitHub Pages remains the website host; no Firebase Hosting, Storage, Functions or billing account is needed.
 
-The source implementation supports the behavior below. **Do not consider setup complete or release this feature until Google sign-in, authorized domains, verified owner UID and matching production rules are configured and verified.** At preparation time the public web configuration is registered, but the owner UID is deliberately null and production database access remains deny-all.
+Google sign-in is enabled, the GitHub Pages domain is authorized, and the owner was verified through an actual Google sign-in. Matching owner-only production rules were published on 31 October 2026. The signed-in browser reached a server-confirmed **Cloud synced** state; an anonymous production request returned HTTP 403 / PERMISSION_DENIED. Personal fitness records were not uploaded during setup.
 
 `assets/firebase-config.js` holds only Firebase's public web identifiers and the approved Firebase Auth UID. These are not administrative credentials. Never add service-account JSON, admin tokens, passwords or personal fitness readings to source.
 
-Enable only the Google sign-in provider. Set the public name to Ironpath and use a support email explicitly approved by its owner because Google presents that address during authentication. Authorize `wongkhaixuanjohn.github.io`. Any localhost authorization used to establish identity is development-only and should be removed after verification.
+Only the Google sign-in provider is enabled. The public name is Ironpath and the owner approved the support email presented by Google. `wongkhaixuanjohn.github.io` is authorized. Firebase’s default localhost domain remains for development; the same owner-only database rules apply there.
 
-Establish the owner through their Google sign-in and verify the visible identity/UID. Set exactly that UID in both `assets/firebase-config.js` and `firestore.rules`. Do not guess it or temporarily open all database access. Other authenticated accounts may exist in Firebase Authentication, but the database rules deny all of their access, even under their own UID paths.
+The verified UID is set identically in `assets/firebase-config.js` and `firestore.rules`. To change owners, establish the replacement through Google sign-in and verify its visible identity/UID before updating both. Never temporarily open all database access. Other authenticated accounts may exist in Firebase Authentication, but the database rules deny all of their access, even under their own UID paths.
 
 ## Records and privacy
 

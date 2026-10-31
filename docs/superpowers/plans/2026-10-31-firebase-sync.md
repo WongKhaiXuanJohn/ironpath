@@ -45,7 +45,7 @@
 
 - [x] Add emulator tests first for deny-anonymous, deny-other-account, owner access, wrong path UID, invalid document shape, forbidden physical delete, correct next revision and revision conflict rejection. Run and observe failures against initial deny-all rules where owner success is expected.
 - [x] Implement rules and adapter. Revisions advance through transactions; listener errors and quota failures preserve outbox. SDK imports fail gracefully to device-only mode. Account-specific caches only load after identity verification. Backups in cloud mode merge rather than delete unrelated documents.
-- [ ] Configure free Firestore in Singapore and Google provider/domain through authenticated Firebase Console. Register only the web app needed for this site. Keep deny-all rules until the owner signs in and its UID can be verified.
+- [x] Configure free Firestore in Singapore and Google provider/domain through authenticated Firebase Console. Register only the web app needed for this site. Keep deny-all rules until the owner signs in and its UID can be verified.
 - [x] Run unit and emulator suites. Commit implementation and rules without an unverified owner identity.
 
 ## Task 3: Account UI and application integration
@@ -56,15 +56,15 @@
 
 - [x] Add behavioral adapter tests for reload after offline edits, auth changes during in-flight requests, refusal to upload guests on sign-in, migration duplicate counts, invalid import and local-only fallback.
 - [x] Implement Google sign-in/out, owner restrictions, meaningful sync states, explicit migration confirmation naming profile/workouts/nutrition/body-composition data and Firebase destination, conflict resolution and retained JSON exports. Change cloud backup restore to a merge with clear copy; keep local backup replacement behavior.
-- [ ] Verify existing workout/date/measurement forms and charts remain functional. Browser test account panel, blocked/non-owner behavior, pending status and mobile layout with synthetic data only.
-- [ ] Run the full suite. Commit this task.
+- [x] Verify existing workout/date/measurement forms and charts remain functional. Browser test account panel, blocked/non-owner behavior, pending status and mobile layout with synthetic data only.
+- [x] Run the full suite. Commit this task.
 
 ## Task 4: Owner verification, review and publication
 
 **Files:** Final verified configuration/rules and `docs/firebase-setup.md`.
 
-- [ ] Complete the user's Google sign-in without collecting credentials; obtain its UID from visible account UI/Authentication console. If Google requires a user-only interaction, request only that step and continue independent tests/review meanwhile.
-- [ ] Deploy owner-only rules and matching public owner UID configuration. Verify public rules deny guest/other-user access with emulator tests and an unauthenticated production request. Never upload existing fitness records during verification.
+- [x] Complete the user's Google sign-in without collecting credentials; obtain its UID from visible account UI/Authentication console. If Google requires a user-only interaction, request only that step and continue independent tests/review meanwhile.
+- [x] Deploy owner-only rules and matching public owner UID configuration. Verify public rules deny guest/other-user access with emulator tests and an unauthenticated production request. Never upload existing fitness records during verification.
 - [x] Request one fresh-context whole-branch review on the most capable available model; address important findings with regression tests and run full suites.
 - [ ] Publish through the existing GitHub repository and Pages source. Verify completed deployment and live account interface; preserve deployment history except a demonstrably stale failed record if repair is needed again.
 - [ ] Save a live screenshot, document tested guarantees and any user-only sign-in/migration work, and stop owned local servers.
