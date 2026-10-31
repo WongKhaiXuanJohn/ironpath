@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCloudSync} from '../assets/cloud-sync.js';
 import {stateToRecords} from '../assets/cloud-records.js';
+import {editableState} from '../assets/editable-state.js';
 const initial=()=>({version:1,profile:{age:'',height:171,weight:78,sex:'male',activity:1.55,goal:'cut',scoops:0,calorieOverride:'',start:'2026-10-26'},sessions:{},measurements:[],nutrition:{}});
 const memory=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
@@ -15,6 +16,16 @@ function fakeTransport(user=null){
  };
 }
 const make=(options={})=>createCloudSync({initial,guestKey:'guest',ownerUid:'owner',storage:memory(),onChange:()=>{},...options});
+for(const [name,change,id] of [
+ ['training settings',s=>{s.profile.training={mode:'experienced',baselines:{bench:{kg:80,reps:5,sets:4,date:'2026-10-30'}}};},'training'],
+ ['nutrition totals',s=>{s.nutrition['2026-10-30']={calories:2000,protein:150,fat:60,carbs:220};},'nutrition_2026-10-30'],
+ ['workout rows',s=>{s.sessions['2026-10-30']={0:{complete:false,exercises:{bench:[{type:'working',kg:60,reps:6,done:true}]}}};},'session_2026-10-30_0']
+])test(`the first rendered ${name} edit is written and survives an account reload`,async()=>{
+ const storage=memory(),transport=fakeTransport({uid:'owner'}),sync=make({storage,transport});await sync.ready;await settle();
+ const baseline=sync.view(),draft=editableState(baseline);change(draft);sync.save(draft,baseline);await settle();
+ assert.deepEqual(transport.writes.map(w=>w.m.id),[id]);
+ const reloaded=make({storage,transport});await reloaded.ready;await settle();assert.deepEqual(reloaded.view().state,draft);
+});
 test('Google sign-in never uploads guest records automatically',async()=>{
  const storage=memory(),guest=initial();guest.profile.weight=82;storage.setItem('guest',JSON.stringify(guest));const transport=fakeTransport();const s=make({storage,transport});
  await s.ready;await s.signIn();await settle();assert.equal(transport.writes.length,0);assert.equal(s.view().state.profile.weight,78);
